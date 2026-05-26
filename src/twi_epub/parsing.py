@@ -82,6 +82,9 @@ def parse_chapter(html: str, url: str) -> Chapter:
 	article = _chapter_article(soup)
 
 	_remove_noise(article)
+	_strip_author_notes(article)
+	_remove_chapter_navigation(article)
+	_convert_dash_separators(article)
 	normalized_html = _normalize_article_html(article)
 	markdown = _markdown_from_html(normalized_html)
 
@@ -185,6 +188,89 @@ def _remove_noise(article: Tag) -> None:
 	)
 	for node in article.select(", ".join(selectors)):
 		node.decompose()
+
+
+def _strip_author_notes(article: Tag) -> None:
+	note = _first_author_note(article)
+	if note is None:
+		return
+
+	for sibling in list(note.next_siblings):
+		if isinstance(sibling, Tag):
+			sibling.decompose()
+		else:
+			sibling.extract()
+	note.decompose()
+
+
+def _first_author_note(article: Tag) -> Tag | None:
+	pattern = re.compile(r"^\s*Author[’']s\s+Note\b", re.IGNORECASE)
+	for node in article.find_all(["p", "div", "section", "h2", "h3", "h4"]):
+		if not isinstance(node, Tag):
+			continue
+		if pattern.search(_clean_text(node.get_text(" ", strip=True))):
+			return node
+	return None
+
+
+def _remove_chapter_navigation(article: Tag) -> None:
+	for node in list(article.find_all(["p", "div", "nav"])):
+		if not isinstance(node, Tag) or not _is_chapter_navigation(node):
+			continue
+		previous = _previous_tag_sibling(node)
+		if previous is not None and previous.name == "hr":
+			previous.decompose()
+		node.decompose()
+
+
+def _is_chapter_navigation(node: Tag) -> bool:
+	text = _clean_text(node.get_text(" ", strip=True)).lower()
+	if not text:
+		return False
+	if "previous chapter" not in text and "next chapter" not in text:
+		return False
+
+	link_text = _clean_text(" ".join(link.get_text(" ", strip=True) for link in node.find_all("a")))
+	if not link_text:
+		return False
+	normalized = re.sub(r"\s+", " ", link_text.lower()).strip()
+	return normalized in {
+		"previous chapter",
+		"next chapter",
+		"previous chapter next chapter",
+		"next chapter previous chapter",
+	}
+
+
+def _convert_dash_separators(article: Tag) -> None:
+	for node in list(article.find_all(["p", "div"])):
+		if not isinstance(node, Tag):
+			continue
+		text = _clean_text(node.get_text("", strip=True)).replace("\u00a0", "")
+		if not _is_dash_separator(text):
+			continue
+		hr = BeautifulSoup("", "lxml").new_tag("hr")
+		node.replace_with(hr)
+
+
+def _is_dash_separator(text: str) -> bool:
+	text = text.strip()
+	if not text:
+		return False
+	if re.fullmatch(r"[—–]", text):
+		return True
+	return bool(re.fullmatch(r"[-—–]{2,}", text))
+
+
+def _previous_tag_sibling(node: Tag) -> Tag | None:
+	previous = node.previous_sibling
+	while previous is not None:
+		if isinstance(previous, Tag):
+			return previous
+		if str(previous).strip():
+			return None
+		previous = previous.previous_sibling
+	return None
 
 
 def _normalize_article_html(article: Tag) -> str:

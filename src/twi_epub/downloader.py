@@ -13,6 +13,8 @@ from .http import fetch_text
 from .models import Chapter, Volume
 from .parsing import TOC_URL, manifest_dump, parse_chapter, parse_toc
 
+CACHE_VERSION = 2
+
 
 def parse_volume_spec(spec: str) -> list[int]:
 	values: set[int] = set()
@@ -105,6 +107,7 @@ def download_volume(
 		manifest_dump(
 			{
 				"volume": volume.number,
+				"cache_version": CACHE_VERSION,
 				"title": volume.title,
 				"generated_at": datetime.now(timezone.utc).isoformat(),
 				"formats": sorted(formats),
@@ -121,6 +124,8 @@ def _load_cached_chapter(output_dir: Path, volume: int, index: int, url: str) ->
 	if not path.exists():
 		return None
 	data = json.loads(path.read_text(encoding="utf-8"))
+	if data.get("cache_version") != CACHE_VERSION:
+		return None
 	return Chapter(
 		title=str(data["title"]),
 		url=str(data["url"]),
@@ -136,6 +141,7 @@ def _write_cached_chapter(output_dir: Path, volume: int, index: int, chapter: Ch
 	path.write_text(
 		manifest_dump(
 			{
+				"cache_version": CACHE_VERSION,
 				"title": chapter.title,
 				"url": chapter.url,
 				"published_at": chapter.published_at,

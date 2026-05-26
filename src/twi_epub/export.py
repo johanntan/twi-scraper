@@ -17,20 +17,14 @@ def write_markdown(volume: Volume, chapters: list[Chapter], path: Path) -> None:
 	lines = [
 		f"# The Wandering Inn - Volume {volume.number}",
 		"",
-		f"Source: https://wanderinginn.com/table-of-contents/#vol-{volume.number}",
-		"",
 	]
 	for chapter in chapters:
 		lines.extend(
 			[
-				f"## {chapter.title}",
-				"",
-				f"Source: {chapter.url}",
+				f"## [{_escape_markdown_link_text(chapter.title)}]({chapter.url})",
 				"",
 			]
 		)
-		if chapter.published_at:
-			lines.extend([f"Published: {chapter.published_at}", ""])
 		lines.extend([chapter.markdown.strip(), ""])
 
 	path.parent.mkdir(parents=True, exist_ok=True)
@@ -73,14 +67,11 @@ def write_epub(volume: Volume, chapters: list[Chapter], path: Path) -> None:
 
 
 def _chapter_xhtml(chapter: Chapter) -> str:
-	published = f"<p><em>Published: {chapter.published_at}</em></p>" if chapter.published_at else ""
 	return f"""
 <html>
   <head><title>{_escape(chapter.title)}</title></head>
   <body>
-    <h1>{_escape(chapter.title)}</h1>
-    <p><a href="{_escape(chapter.url)}">Source chapter</a></p>
-    {published}
+    <h1><a href="{_escape(chapter.url)}">{_escape(chapter.title)}</a></h1>
     {chapter.html}
   </body>
 </html>
@@ -91,3 +82,7 @@ def _escape(value: str) -> str:
 	return (
 		value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 	)
+
+
+def _escape_markdown_link_text(value: str) -> str:
+	return value.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]")

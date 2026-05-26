@@ -45,7 +45,13 @@ CHAPTER_HTML = """
         <article class="twi-article">
           <p>Then she was <em>there</em>.</p>
           <p><span style="color: #ff0000">Red text</span></p>
+          <p>——</p>
+          <p>—But this is story text.</p>
           <p><a href="/table-of-contents/">Back to TOC</a></p>
+          <hr />
+          <p><a href="/previous/">Previous Chapter</a> <a href="/next/">Next Chapter</a></p>
+          <p><strong>Author’s Note:</strong> This should be stripped.</p>
+          <p>Fanart and credits should be stripped too.</p>
           <aside class="non-article">No gallery found.</aside>
           <script>ignored()</script>
         </article>
@@ -74,7 +80,14 @@ def test_parse_chapter_extracts_article_and_metadata():
 	assert chapter.published_at == "2023-01-22T02:35:52+00:00"
 	assert "Then she was *there*." in chapter.markdown
 	assert '<span style="color: #ff0000">Red text</span>' in chapter.markdown
+	assert "<hr" in chapter.html
+	assert "---" in chapter.markdown
+	assert "—But this is story text." in chapter.markdown
 	assert "https://wanderinginn.com/table-of-contents/" in chapter.markdown
+	assert "Previous Chapter" not in chapter.markdown
+	assert "Next Chapter" not in chapter.markdown
+	assert "Author’s Note" not in chapter.markdown
+	assert "Fanart and credits" not in chapter.markdown
 	assert "No gallery found" not in chapter.markdown
 	assert "script" not in chapter.html
 

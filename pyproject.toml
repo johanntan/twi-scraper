@@ -7,11 +7,11 @@ requires-python = ">=3.13"
 dependencies = [
     "beautifulsoup4>=4.13.4",
     "browser-cookie3>=0.20.1",
+    "click>=8.1.8",
     "ebooklib>=0.19",
     "httpx>=0.28.1",
     "lxml>=5.4.0",
     "markdownify>=1.1.0",
-    "typer>=0.15.4",
 ]
 
 [project.scripts]
