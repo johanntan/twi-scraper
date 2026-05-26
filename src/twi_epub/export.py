@@ -1,0 +1,93 @@
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+from ebooklib import epub
+
+from .models import Chapter, Volume
+
+
+def slugify(value: str) -> str:
+	slug = re.sub(r"[^a-zA-Z0-9]+", "-", value.lower()).strip("-")
+	return slug or "chapter"
+
+
+def write_markdown(volume: Volume, chapters: list[Chapter], path: Path) -> None:
+	lines = [
+		f"# The Wandering Inn - Volume {volume.number}",
+		"",
+		f"Source: https://wanderinginn.com/table-of-contents/#vol-{volume.number}",
+		"",
+	]
+	for chapter in chapters:
+		lines.extend(
+			[
+				f"## {chapter.title}",
+				"",
+				f"Source: {chapter.url}",
+				"",
+			]
+		)
+		if chapter.published_at:
+			lines.extend([f"Published: {chapter.published_at}", ""])
+		lines.extend([chapter.markdown.strip(), ""])
+
+	path.parent.mkdir(parents=True, exist_ok=True)
+	path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+
+
+def write_epub(volume: Volume, chapters: list[Chapter], path: Path) -> None:
+	book = epub.EpubBook()
+	book.set_identifier(f"twi-volume-{volume.number}")
+	book.set_title(f"The Wandering Inn - Volume {volume.number}")
+	book.set_language("en")
+	book.add_author("pirateaba")
+	book.add_metadata("DC", "source", "https://wanderinginn.com/table-of-contents/")
+
+	epub_chapters: list[epub.EpubHtml] = []
+	used_names: set[str] = set()
+	for index, chapter in enumerate(chapters, start=1):
+		basename = slugify(chapter.title)
+		filename = f"{index:03d}-{basename}.xhtml"
+		while filename in used_names:
+			filename = f"{index:03d}-{basename}-{len(used_names)}.xhtml"
+		used_names.add(filename)
+
+		item = epub.EpubHtml(
+			title=chapter.title,
+			file_name=filename,
+			lang="en",
+		)
+		item.content = _chapter_xhtml(chapter)
+		book.add_item(item)
+		epub_chapters.append(item)
+
+	book.toc = tuple(epub_chapters)
+	book.spine = ["nav", *epub_chapters]
+	book.add_item(epub.EpubNcx())
+	book.add_item(epub.EpubNav())
+
+	path.parent.mkdir(parents=True, exist_ok=True)
+	epub.write_epub(str(path), book)
+
+
+def _chapter_xhtml(chapter: Chapter) -> str:
+	published = f"<p><em>Published: {chapter.published_at}</em></p>" if chapter.published_at else ""
+	return f"""
+<html>
+  <head><title>{_escape(chapter.title)}</title></head>
+  <body>
+    <h1>{_escape(chapter.title)}</h1>
+    <p><a href="{_escape(chapter.url)}">Source chapter</a></p>
+    {published}
+    {chapter.html}
+  </body>
+</html>
+"""
+
+
+def _escape(value: str) -> str:
+	return (
+		value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+	)
