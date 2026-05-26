@@ -58,7 +58,7 @@ def write_epub(volume: Volume, chapters: list[Chapter], path: Path) -> None:
 		epub_chapters.append(item)
 
 	book.toc = tuple(epub_chapters)
-	book.spine = ["nav", *epub_chapters]
+	book.spine = epub_chapters
 	book.add_item(epub.EpubNcx())
 	book.add_item(epub.EpubNav())
 

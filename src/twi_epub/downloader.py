@@ -7,6 +7,7 @@ from pathlib import Path
 
 import httpx
 
+from .catalog import apply_volume_overrides
 from .errors import LockedChapterError, ParseError
 from .export import write_epub, write_markdown
 from .http import fetch_text
@@ -50,7 +51,7 @@ def parse_format_spec(spec: str) -> set[str]:
 
 def load_selected_volumes(client: httpx.Client, volume_numbers: list[int]) -> list[Volume]:
 	toc_html = fetch_text(client, TOC_URL)
-	volumes = parse_toc(toc_html)
+	volumes = apply_volume_overrides(parse_toc(toc_html))
 	missing = [number for number in volume_numbers if number not in volumes]
 	if missing:
 		available = ", ".join(str(number) for number in sorted(volumes))
@@ -74,8 +75,7 @@ def download_volume(
 	for index, link in enumerate(volume.chapters, start=1):
 		chapter = _load_cached_chapter(output_dir, volume.number, index, link.url)
 		if chapter is None or refresh:
-			html = fetch_text(client, link.url)
-			chapter = parse_chapter(html, link.url)
+			chapter = fetch_chapter(client, link.url)
 			_write_cached_chapter(output_dir, volume.number, index, chapter)
 			status = "downloaded"
 		else:
@@ -117,6 +117,14 @@ def download_volume(
 		encoding="utf-8",
 	)
 	return paths
+
+
+def fetch_chapter(
+	client: httpx.Client,
+	url: str,
+) -> Chapter:
+	html = fetch_text(client, url)
+	return parse_chapter(html, url)
 
 
 def _load_cached_chapter(output_dir: Path, volume: int, index: int, url: str) -> Chapter | None:
@@ -169,7 +177,7 @@ def auth_hint(error: Exception, browser: str | None) -> str:
 	if isinstance(error, LockedChapterError):
 		attempted = f" using {browser} cookies" if browser else ""
 		return (
-			f"{error}{attempted}. Log in to wanderinginn.com/Patreon in that browser "
+			f"{error}{attempted}. Try logging in with Firefox and running with --browser firefox, "
 			"or pass --cookies-file with exported authorized cookies."
 		)
 	return str(error)

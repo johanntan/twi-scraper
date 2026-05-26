@@ -31,6 +31,9 @@ def test_write_markdown_and_epub(tmp_path):
 
 	book = epub.read_epub(str(epub_path))
 	assert book.get_metadata("DC", "title")[0][0] == "The Wandering Inn - Volume 3"
+	assert [book.get_item_with_id(item_id).file_name for item_id, _ in book.spine] == [
+		"001-3-00.xhtml"
+	]
 	chapter_items = [item for item in book.get_items() if item.file_name.endswith(".xhtml")]
 	chapter_html = chapter_items[0].get_content().decode("utf-8")
 	assert '<h1><a href="https://wanderinginn.com/2017/07/01/3-00/">3.00</a></h1>' in chapter_html
