@@ -14,7 +14,7 @@ from .http import fetch_text
 from .models import Chapter, Volume
 from .parsing import TOC_URL, manifest_dump, parse_chapter, parse_toc
 
-CACHE_VERSION = 2
+CACHE_VERSION = 3
 
 
 def parse_volume_spec(spec: str) -> list[int]:

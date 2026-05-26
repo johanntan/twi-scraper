@@ -100,3 +100,112 @@ def test_parse_chapter_detects_locked_page():
 
 	with pytest.raises(LockedChapterError):
 		parse_chapter(html, "https://wanderinginn.com/locked/")
+
+
+def test_parse_chapter_removes_volume_seven_podcast_notice():
+	chapter = parse_chapter(
+		_chapter_html(
+			"Interlude - The Innkeeper's [Knight]",
+			"""
+			<p>Real chapter text.</p>
+			<p>(A podcast talking about The Last Tide is out, featuring one of our Discord moderators,
+			Blue Juice! Check it out <a href="https://example.com">here</a>!)</p>
+			""",
+		),
+		"https://wanderinginn.com/2020/10/18/interlude-the-innkeepers-knight/",
+	)
+
+	assert "Real chapter text." in chapter.markdown
+	assert "podcast talking about The Last Tide" not in chapter.markdown
+
+
+def test_parse_chapter_removes_volume_seven_last_tide_notice():
+	chapter = parse_chapter(
+		_chapter_html(
+			"7.02",
+			"""
+			<p>Real chapter text.</p>
+			<p>(A young woman from the Phillipines is a [Fisher] at the end of the world.
+			The Last Tide, a comicbook illustrated by Shane Sandulak will be coming out this
+			summer! Click on this <a href="https://example.com">link</a> for more details!)</p>
+			""",
+		),
+		"https://wanderinginn.com/2020/01/26/7-02/",
+	)
+
+	assert "Real chapter text." in chapter.markdown
+	assert "young woman from the Phillipines" not in chapter.markdown
+	assert "The Last Tide" not in chapter.markdown
+
+
+def test_parse_chapter_removes_volume_seven_amazon_notice():
+	for title in ("7.50", "7.56"):
+		chapter = parse_chapter(
+			_chapter_html(
+				title,
+				"""
+				<p>Real chapter text.</p>
+				<p>(The Wandering Inn, Volume 3 – Part 1 is up on <a href="https://example.com">Amazon</a>!
+				Check it out and consider
+				leaving a review—the audiobook should begin recording in January, 2021!)</p>
+				""",
+			),
+			f"https://wanderinginn.com/2020/10/18/{title.replace('.', '-')}/",
+		)
+
+		assert "Real chapter text." in chapter.markdown
+		assert "Volume 3" not in chapter.markdown
+		assert "audiobook should begin recording" not in chapter.markdown
+
+
+def test_parse_chapter_removes_solstice_reader_instruction():
+	chapter = parse_chapter(
+		_chapter_html(
+			"7.61",
+			"""
+			<p>Real chapter text.</p>
+			<p>(Before going to next chapter, read Solstice Pt. 4-9. This is for users who do not
+			see hyperlinks, such as those on mobile devices or WordPress’ Reader Mode.)</p>
+			""",
+		),
+		"https://wanderinginn.com/2020/12/20/solstice-pt-3/",
+	)
+
+	assert "Real chapter text." in chapter.markdown
+	assert "Before going to next chapter" not in chapter.markdown
+
+
+def test_parse_chapter_unlinks_final_solstice_chapter_link_only():
+	chapter = parse_chapter(
+		_chapter_html(
+			"7.61",
+			"""
+			<p><a href="/2020/12/20/solstice-pt-2/">Earlier Solstice reference</a>.</p>
+			<p>More story.</p>
+			<p>More story still.</p>
+			<p>She reached the <a href="/2020/12/20/solstice-pt-4/">door</a>.</p>
+			""",
+		),
+		"https://wanderinginn.com/2020/12/20/solstice-pt-3/",
+	)
+
+	assert "[Earlier Solstice reference]" in chapter.markdown
+	assert "https://wanderinginn.com/2020/12/20/solstice-pt-2/" in chapter.markdown
+	assert "She reached the door." in chapter.markdown
+	assert "https://wanderinginn.com/2020/12/20/solstice-pt-4/" not in chapter.markdown
+	assert (
+		'<a href="https://wanderinginn.com/2020/12/20/solstice-pt-4/">door</a>' not in chapter.html
+	)
+
+
+def _chapter_html(title: str, body: str) -> str:
+	return f"""
+	<html>
+	  <head><meta property="og:title" content="{title}" /></head>
+	  <body>
+	    <article class="twi-article">
+	      {body}
+	    </article>
+	  </body>
+	</html>
+	"""

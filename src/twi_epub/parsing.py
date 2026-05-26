@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup, Tag
 from markdownify import MarkdownConverter
 
+from .chapter_cleanups import apply_manual_chapter_cleanups
 from .errors import LockedChapterError, ParseError
 from .models import Chapter, ChapterLink, Volume
 
@@ -85,6 +86,7 @@ def parse_chapter(html: str, url: str) -> Chapter:
 	_strip_author_notes(article)
 	_remove_chapter_navigation(article)
 	_convert_dash_separators(article)
+	apply_manual_chapter_cleanups(article, title=title, url=url)
 	normalized_html = _normalize_article_html(article)
 	markdown = _markdown_from_html(normalized_html)
 

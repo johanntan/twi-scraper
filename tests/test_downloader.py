@@ -1,5 +1,6 @@
 from twi_epub.catalog import VOLUME_URL_OVERRIDES, apply_volume_overrides
 from twi_epub.downloader import (
+	CACHE_VERSION,
 	_load_cached_chapter,
 	_write_cached_chapter,
 	parse_format_spec,
@@ -26,7 +27,9 @@ def test_cache_rejects_old_version(tmp_path):
 	_write_cached_chapter(tmp_path, 3, 1, chapter)
 	path = next((tmp_path / ".cache" / "volume-03").glob("*.json"))
 	path.write_text(
-		path.read_text(encoding="utf-8").replace('"cache_version": 2', '"cache_version": 1')
+		path.read_text(encoding="utf-8").replace(
+			f'"cache_version": {CACHE_VERSION}', '"cache_version": 1'
+		)
 	)
 
 	assert _load_cached_chapter(tmp_path, 3, 1, chapter.url) is None
