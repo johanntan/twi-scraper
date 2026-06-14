@@ -7,20 +7,22 @@ import click
 from .auth import SUPPORTED_BROWSERS
 from .downloader import (
 	auth_hint,
+	download_single_chapter,
 	download_volume,
 	load_selected_volumes,
 	parse_format_spec,
 	parse_volume_spec,
+	resolve_chapter_selector,
 )
 from .errors import TwiEpubError
 from .http import build_client
 
 
 @click.command(
-	help="Download authorized Wandering Inn volumes for personal archives.",
+	help="Download Wandering Inn volumes or individual chapters for personal archives.",
 	context_settings={"help_option_names": ["--help"]},
 )
-@click.argument("args", nargs=-1, metavar="[VOLUMES]")
+@click.argument("args", nargs=-1, metavar="[VOLUMES | chapter SELECTOR]")
 @click.option(
 	"--volumes",
 	"-v",
@@ -32,7 +34,7 @@ from .http import build_client
 	"-f",
 	default="epub,md",
 	show_default=True,
-	help="Comma-separated output formats: epub, md, or epub,md.",
+	help="Volume output formats: epub, md, or epub,md.",
 )
 @click.option(
 	"--output",
@@ -68,6 +70,20 @@ def app(
 ) -> None:
 	"""CLI entrypoint."""
 
+	if args and args[0] == "chapter":
+		selector = _resolve_chapter_argument(args, volumes_option)
+		if formats != "epub,md":
+			raise click.ClickException("--formats only applies to volume downloads.")
+		if refresh:
+			raise click.ClickException("--refresh only applies to volume downloads.")
+		_run_chapter(
+			selector=selector,
+			output=output,
+			browser=browser,
+			cookies_file=cookies_file,
+		)
+		return
+
 	volumes = _resolve_volume_argument(args, volumes_option)
 	_run_download(
 		volumes=volumes,
@@ -77,6 +93,16 @@ def app(
 		cookies_file=cookies_file,
 		refresh=refresh,
 	)
+
+
+def _resolve_chapter_argument(args: tuple[str, ...], volumes_option: str | None) -> str:
+	if volumes_option:
+		raise click.ClickException("--volumes cannot be used with the chapter command.")
+	if len(args) != 2:
+		raise click.ClickException(
+			"Pass one chapter title, URL, or 'latest'. Example: twi-epub chapter 1.05"
+		)
+	return args[1]
 
 
 def _resolve_volume_argument(args: tuple[str, ...], volumes_option: str | None) -> str:
@@ -93,6 +119,24 @@ def _resolve_volume_argument(args: tuple[str, ...], volumes_option: str | None) 
 	if volumes_option:
 		return volumes_option
 	raise click.ClickException("Missing volume spec. Example: twi-epub 4")
+
+
+def _run_chapter(
+	*,
+	selector: str,
+	output: Path,
+	browser: str | None,
+	cookies_file: Path | None,
+) -> None:
+	try:
+		output.mkdir(parents=True, exist_ok=True)
+		with build_client(browser=browser, cookies_file=cookies_file) as client:
+			link = resolve_chapter_selector(client, selector)
+			click.echo(f"Chapter: {link.title}")
+			path = download_single_chapter(client, link, output_dir=output)
+			click.echo(f"Wrote {path}")
+	except (TwiEpubError, ValueError, OSError) as exc:
+		raise click.ClickException(auth_hint(exc, browser)) from exc
 
 
 def _run_download(

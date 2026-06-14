@@ -1,6 +1,11 @@
 from ebooklib import epub
 
-from twi_epub.export import write_epub, write_markdown
+from twi_epub.export import (
+	chapter_markdown_filename,
+	write_chapter_markdown,
+	write_epub,
+	write_markdown,
+)
 from twi_epub.models import Chapter, Volume
 
 
@@ -39,3 +44,50 @@ def test_write_markdown_and_epub(tmp_path):
 	assert '<h1><a href="https://wanderinginn.com/2017/07/01/3-00/">3.00</a></h1>' in chapter_html
 	assert "Source chapter" not in chapter_html
 	assert "Published:" not in chapter_html
+
+
+def test_write_single_chapter_markdown(tmp_path):
+	chapter = Chapter(
+		title="10.67 O",
+		url="https://wanderinginn.com/2026/06/14/10-67-o/",
+		html="<div><p>Hello.</p></div>",
+		markdown="Hello.\n\n***\n\nAuthor's Note.",
+	)
+	path = tmp_path / chapter_markdown_filename(chapter.title)
+
+	write_chapter_markdown(chapter, path)
+
+	assert path.name == "TWI-10.67-O.md"
+	assert path.read_text(encoding="utf-8") == (
+		"# [10.67 O](https://wanderinginn.com/2026/06/14/10-67-o/)\n\n"
+		"Hello.\n\n***\n\nAuthor's Note.\n"
+	)
+
+
+def test_all_renderers_normalize_accessible_unicode(tmp_path):
+	volume = Volume(number=10, title="Volume 10")
+	chapter = Chapter(
+		title="𝟏𝟎.𝟔𝟔 𝐎",
+		url="https://wanderinginn.com/2026/06/07/10-66-o/",
+		html='<div><p>𝔗𝔥𝔢 𝐈𝐧𝐧</p><a href="https://example.com/𝔗𝔥𝔢">𝓛𝓲𝓷𝓴</a></div>',
+		markdown="𝔗𝔥𝔢 𝐈𝐧𝐧 and [𝓛𝓲𝓷𝓴](https://example.com/𝔗𝔥𝔢)",
+	)
+	chapter_path = tmp_path / chapter_markdown_filename(chapter.title)
+	volume_path = tmp_path / "volume-10.md"
+	epub_path = tmp_path / "volume-10.epub"
+
+	write_chapter_markdown(chapter, chapter_path)
+	write_markdown(volume, [chapter], volume_path)
+	write_epub(volume, [chapter], epub_path)
+
+	assert chapter_path.name == "TWI-10.66-O.md"
+	assert "The Inn and [Link](https://example.com/𝔗𝔥𝔢)" in chapter_path.read_text(encoding="utf-8")
+	assert "## [10.66 O]" in volume_path.read_text(encoding="utf-8")
+
+	book = epub.read_epub(str(epub_path))
+	item = next(item for item in book.get_items() if item.file_name == "001-10-66-o.xhtml")
+	html = item.get_content().decode("utf-8")
+	assert ">10.66 O</a></h1>" in html
+	assert "The Inn" in html
+	assert ">Link</a>" in html
+	assert 'href="https://example.com/𝔗𝔥𝔢"' in html

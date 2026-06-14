@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import dataclass
 from html import escape
 from urllib.parse import urljoin
 
@@ -11,9 +12,23 @@ from markdownify import MarkdownConverter
 from .chapter_cleanups import apply_manual_chapter_cleanups
 from .errors import LockedChapterError, ParseError
 from .models import Chapter, ChapterLink, Volume
+from .text import normalize_accessible_text, normalize_tag_text
 
 BASE_URL = "https://wanderinginn.com/"
 TOC_URL = "https://wanderinginn.com/table-of-contents/"
+
+
+@dataclass(frozen=True)
+class ChapterParseOptions:
+	strip_author_notes: bool = True
+	apply_manual_cleanups: bool = True
+
+
+DEFAULT_CHAPTER_PARSE_OPTIONS = ChapterParseOptions()
+SINGLE_CHAPTER_PARSE_OPTIONS = ChapterParseOptions(
+	strip_author_notes=False,
+	apply_manual_cleanups=False,
+)
 
 
 def parse_toc(html: str, base_url: str = TOC_URL) -> dict[int, Volume]:
@@ -73,20 +88,28 @@ def parse_toc(html: str, base_url: str = TOC_URL) -> dict[int, Volume]:
 	return volumes
 
 
-def parse_chapter(html: str, url: str) -> Chapter:
+def parse_chapter(
+	html: str,
+	url: str,
+	*,
+	options: ChapterParseOptions = DEFAULT_CHAPTER_PARSE_OPTIONS,
+) -> Chapter:
 	soup = BeautifulSoup(html, "lxml")
 	if is_locked_page(soup):
 		raise LockedChapterError(f"Chapter appears to be locked: {url}")
 
-	title = _chapter_title(soup)
+	title = normalize_accessible_text(_chapter_title(soup))
 	published_at = _meta_content(soup, "article:published_time")
 	article = _chapter_article(soup)
 
 	_remove_noise(article)
-	_strip_author_notes(article)
+	normalize_tag_text(article)
+	if options.strip_author_notes:
+		_strip_author_notes(article)
 	_remove_chapter_navigation(article)
 	_convert_dash_separators(article)
-	apply_manual_chapter_cleanups(article, title=title, url=url)
+	if options.apply_manual_cleanups:
+		apply_manual_chapter_cleanups(article, title=title, url=url)
 	normalized_html = _normalize_article_html(article)
 	markdown = _markdown_from_html(normalized_html)
 
@@ -307,6 +330,9 @@ def _markdown_from_html(html: str) -> str:
 
 
 class _TwiMarkdownConverter(MarkdownConverter):
+	def convert_hr(self, el: Tag, text: str, parent_tags: set[str]) -> str:
+		return "\n\n***\n\n"
+
 	def convert_span(self, el: Tag, text: str, parent_tags: set[str]) -> str:
 		return self._inline_html_if_styled(el, text, {"style", "class", "title"})
 

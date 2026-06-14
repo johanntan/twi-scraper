@@ -1,3 +1,5 @@
+import pytest
+
 from twi_epub.catalog import VOLUME_URL_OVERRIDES, apply_volume_overrides
 from twi_epub.downloader import (
 	CACHE_VERSION,
@@ -5,7 +7,10 @@ from twi_epub.downloader import (
 	_write_cached_chapter,
 	parse_format_spec,
 	parse_volume_spec,
+	resolve_chapter_from_volumes,
+	resolve_chapter_selector,
 )
+from twi_epub.errors import ParseError
 from twi_epub.models import Chapter, ChapterLink, Volume
 
 
@@ -61,3 +66,66 @@ def test_apply_volume_overrides_preserves_known_titles():
 	assert len(updated[1].chapters) == 66
 	assert updated[1].chapters[0].title == "1.00"
 	assert updated[3] is volumes[3]
+
+
+def test_resolve_chapter_selector_supports_latest_titles_and_rewrite_aliases():
+	volumes = {
+		1: Volume(
+			number=1,
+			title="Volume 1",
+			chapters=(
+				ChapterLink(
+					title="Rw1 05",
+					url="https://wanderinginn.com/2017/03/03/rw1-05/",
+				),
+			),
+		),
+		10: Volume(
+			number=10,
+			title="Volume 10",
+			chapters=(
+				ChapterLink(
+					title="10.66 (Pt. 1)",
+					url="https://wanderinginn.com/2026/05/31/10-66-pt-1/",
+				),
+				ChapterLink(
+					title="10.66 (Pt. 2)",
+					url="https://wanderinginn.com/2026/06/07/10-66-pt-2/",
+				),
+			),
+		),
+	}
+
+	assert resolve_chapter_from_volumes("1.05", volumes).url.endswith("/rw1-05/")
+	assert resolve_chapter_from_volumes("10.66（Pt. 2）", volumes).url.endswith("/10-66-pt-2/")
+	assert resolve_chapter_from_volumes("latest", volumes).title == "10.66 (Pt. 2)"
+
+
+def test_resolve_chapter_selector_rejects_ambiguous_titles():
+	volumes = {
+		3: Volume(
+			number=3,
+			title="Volume 3",
+			chapters=(
+				ChapterLink(title="Interlude", url="https://wanderinginn.com/2017/07/01/one/"),
+			),
+		),
+		4: Volume(
+			number=4,
+			title="Volume 4",
+			chapters=(
+				ChapterLink(title="Interlude", url="https://wanderinginn.com/2018/01/01/two/"),
+			),
+		),
+	}
+
+	with pytest.raises(ParseError, match="ambiguous"):
+		resolve_chapter_from_volumes("interlude", volumes)
+
+
+def test_resolve_chapter_selector_accepts_only_wandering_inn_urls():
+	url = "https://wanderinginn.com/2026/06/07/10-66-pt-2/"
+
+	assert resolve_chapter_selector(object(), url).url == url
+	with pytest.raises(ParseError, match="wanderinginn.com"):
+		resolve_chapter_selector(object(), "https://example.com/chapter/")

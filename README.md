@@ -39,6 +39,23 @@ Refresh cached chapters:
 uv run twi-epub 3 --refresh --output out/
 ```
 
+Download one chapter as Markdown by table-of-contents title:
+
+```bash
+uv run twi-epub chapter 1.05
+```
+
+The selector can also be `latest` or a direct Wandering Inn chapter URL:
+
+```bash
+uv run twi-epub chapter latest --browser firefox
+uv run twi-epub chapter https://wanderinginn.com/2020/01/26/7-02/
+```
+
+Chapter downloads keep author notes, normalize stylized Unicode letters for
+screen readers, and write files such as `out/TWI-1.05.md`. Browser and exported
+cookie options work the same way as volume downloads.
+
 Outputs are written as `volume-NN.md`, `volume-NN.epub`, and cache/manifest data
 under `out/.cache/`.
 

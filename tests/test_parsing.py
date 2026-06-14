@@ -1,7 +1,7 @@
 import pytest
 
 from twi_epub.errors import LockedChapterError
-from twi_epub.parsing import parse_chapter, parse_toc
+from twi_epub.parsing import SINGLE_CHAPTER_PARSE_OPTIONS, parse_chapter, parse_toc
 
 
 TOC_HTML = """
@@ -81,7 +81,8 @@ def test_parse_chapter_extracts_article_and_metadata():
 	assert "Then she was *there*." in chapter.markdown
 	assert '<span style="color: #ff0000">Red text</span>' in chapter.markdown
 	assert "<hr" in chapter.html
-	assert "---" in chapter.markdown
+	assert "***" in chapter.markdown
+	assert "---" not in chapter.markdown
 	assert "—But this is story text." in chapter.markdown
 	assert "https://wanderinginn.com/table-of-contents/" in chapter.markdown
 	assert "Previous Chapter" not in chapter.markdown
@@ -100,6 +101,50 @@ def test_parse_chapter_detects_locked_page():
 
 	with pytest.raises(LockedChapterError):
 		parse_chapter(html, "https://wanderinginn.com/locked/")
+
+
+def test_single_chapter_parse_keeps_author_notes_and_manual_cleanup_text():
+	chapter = parse_chapter(
+		_chapter_html(
+			"7.02",
+			"""
+			<p>Real chapter text.</p>
+			<p>(A young woman from the Phillipines is a [Fisher] at the end of the world.
+			The Last Tide, a comicbook illustrated by Shane Sandulak will be coming out this
+			summer! Click on this link for more details!)</p>
+			<p><strong>Author's Note:</strong> This should remain.</p>
+			<p>More notes.</p>
+			<p><a href="/previous/">Previous Chapter</a></p>
+			""",
+		),
+		"https://wanderinginn.com/2020/01/26/7-02/",
+		options=SINGLE_CHAPTER_PARSE_OPTIONS,
+	)
+
+	assert "Real chapter text." in chapter.markdown
+	assert "The Last Tide" in chapter.markdown
+	assert "Author's Note" in chapter.markdown
+	assert "More notes." in chapter.markdown
+	assert "Previous Chapter" not in chapter.markdown
+
+
+def test_parse_chapter_normalizes_stylized_unicode_text_but_not_attributes():
+	chapter = parse_chapter(
+		_chapter_html(
+			"𝟏𝟎.𝟔𝟕 𝐎",
+			"""
+			<p>𝔗𝔥𝔢 𝐈𝐧𝐧 has ＦＵＬＬＷＩＤＴＨ text and a ﬁne café.</p>
+			<p><a href="https://example.com/𝔗𝔥𝔢">𝓛𝓲𝓷𝓴</a></p>
+			""",
+		),
+		"https://wanderinginn.com/2026/06/14/10-67-o/",
+		options=SINGLE_CHAPTER_PARSE_OPTIONS,
+	)
+
+	assert chapter.title == "10.67 O"
+	assert "The Inn has FULLWIDTH text and a fine café." in chapter.markdown
+	assert "[Link](https://example.com/𝔗𝔥𝔢)" in chapter.markdown
+	assert "𝔗𝔥𝔢" in chapter.html
 
 
 def test_parse_chapter_removes_volume_seven_podcast_notice():
