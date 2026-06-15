@@ -10,7 +10,7 @@ from urllib.parse import unquote, urlparse
 
 import httpx
 
-from .catalog import apply_volume_overrides
+from .catalog import apply_volume_download_exclusions, apply_volume_overrides
 from .errors import LockedChapterError, ParseError
 from .export import chapter_markdown_filename, write_chapter_markdown, write_epub, write_markdown
 from .http import fetch_text
@@ -68,7 +68,7 @@ def load_selected_volumes(client: httpx.Client, volume_numbers: list[int]) -> li
 		raise ParseError(
 			f"Volume(s) not found: {', '.join(map(str, missing))}. Available: {available}"
 		)
-	return [volumes[number] for number in volume_numbers]
+	return [apply_volume_download_exclusions(volumes[number]) for number in volume_numbers]
 
 
 def load_volume_catalog(client: httpx.Client) -> dict[int, Volume]:

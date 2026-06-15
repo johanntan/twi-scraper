@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from .models import ChapterLink, Volume
 
+VOLUME_CHAPTER_TITLE_PREFIX_EXCLUSIONS: dict[int, tuple[str, ...]] = {
+	10: ("tales of innworld #",),
+}
+
 VOLUME_URL_OVERRIDES: dict[int, tuple[str, ...]] = {
 	1: (
 		"https://wanderinginn.com/2017/03/03/rw1-00/",
@@ -155,6 +159,17 @@ def apply_volume_overrides(volumes: dict[int, Volume]) -> dict[int, Volume]:
 			chapters=chapters,
 		)
 	return updated
+
+
+def apply_volume_download_exclusions(volume: Volume) -> Volume:
+	prefixes = VOLUME_CHAPTER_TITLE_PREFIX_EXCLUSIONS.get(volume.number, ())
+	if not prefixes:
+		return volume
+
+	chapters = tuple(
+		chapter for chapter in volume.chapters if not chapter.title.casefold().startswith(prefixes)
+	)
+	return Volume(number=volume.number, title=volume.title, chapters=chapters)
 
 
 def _title_from_url(url: str) -> str:

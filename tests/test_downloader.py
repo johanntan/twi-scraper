@@ -1,6 +1,10 @@
 import pytest
 
-from twi_epub.catalog import VOLUME_URL_OVERRIDES, apply_volume_overrides
+from twi_epub.catalog import (
+	VOLUME_URL_OVERRIDES,
+	apply_volume_download_exclusions,
+	apply_volume_overrides,
+)
 from twi_epub.downloader import (
 	CACHE_VERSION,
 	_load_cached_chapter,
@@ -66,6 +70,44 @@ def test_apply_volume_overrides_preserves_known_titles():
 	assert len(updated[1].chapters) == 66
 	assert updated[1].chapters[0].title == "1.00"
 	assert updated[3] is volumes[3]
+
+
+def test_volume_ten_download_excludes_tales_of_innworld_comics():
+	volume = Volume(
+		number=10,
+		title="Volume 10",
+		chapters=(
+			ChapterLink(
+				title="10.24 E",
+				url="https://wanderinginn.com/2024/10/13/10-24-e/",
+			),
+			ChapterLink(
+				title="Tales of Innworld #1",
+				url="https://wanderinginn.com/2024/10/26/tales-of-innworld-1/",
+			),
+			ChapterLink(
+				title="Tales of Innworld #7",
+				url="https://wanderinginn.com/2025/12/07/tales-of-innworld-7/",
+			),
+			ChapterLink(
+				title="Beware of Chicken x The Wandering Inn Crossover Comic!",
+				url=(
+					"https://wanderinginn.com/2025/12/03/"
+					"beware-of-chicken-x-the-wandering-inn-crossover-comic/"
+				),
+			),
+		),
+	)
+
+	filtered = apply_volume_download_exclusions(volume)
+
+	assert [chapter.title for chapter in filtered.chapters] == [
+		"10.24 E",
+		"Beware of Chicken x The Wandering Inn Crossover Comic!",
+	]
+	assert resolve_chapter_from_volumes("Tales of Innworld #1", {10: volume}).url.endswith(
+		"/tales-of-innworld-1/"
+	)
 
 
 def test_resolve_chapter_selector_supports_latest_titles_and_rewrite_aliases():
