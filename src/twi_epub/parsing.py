@@ -12,7 +12,7 @@ from markdownify import MarkdownConverter
 from .chapter_cleanups import apply_manual_chapter_cleanups
 from .errors import LockedChapterError, ParseError
 from .models import Chapter, ChapterLink, Volume
-from .text import normalize_accessible_text, normalize_tag_text
+from .text import normalize_accessible_text, normalize_tag_redactions, normalize_tag_text
 
 BASE_URL = "https://wanderinginn.com/"
 TOC_URL = "https://wanderinginn.com/table-of-contents/"
@@ -103,6 +103,7 @@ def parse_chapter(
 	article = _chapter_article(soup)
 
 	_remove_noise(article)
+	normalize_tag_redactions(article)
 	normalize_tag_text(article)
 	if options.strip_author_notes:
 		_strip_author_notes(article)

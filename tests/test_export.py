@@ -1,4 +1,5 @@
 from ebooklib import epub
+from bs4 import BeautifulSoup
 
 from twi_epub.export import (
 	chapter_markdown_filename,
@@ -69,8 +70,14 @@ def test_all_renderers_normalize_accessible_unicode(tmp_path):
 	chapter = Chapter(
 		title="𝟏𝟎.𝟔𝟔 𝐎",
 		url="https://wanderinginn.com/2026/06/07/10-66-o/",
-		html='<div><p>𝔗𝔥𝔢 𝐈𝐧𝐧</p><a href="https://example.com/𝔗𝔥𝔢">𝓛𝓲𝓷𝓴</a></div>',
-		markdown="𝔗𝔥𝔢 𝐈𝐧𝐧 and [𝓛𝓲𝓷𝓴](https://example.com/𝔗𝔥𝔢)",
+		html=(
+			'<div><p>𝔗𝔥𝔢 𝐈𝐧𝐧 hid <span style="opacity: 0">a secret</span> and ███.</p>'
+			'<a href="https://example.com/𝔗𝔥𝔢">𝓛𝓲𝓷𝓴</a></div>'
+		),
+		markdown=(
+			"𝔗𝔥𝔢 𝐈𝐧𝐧 and [𝓛𝓲𝓷𝓴](https://example.com/𝔗𝔥𝔢) hid "
+			'<span style="opacity: 0">a secret</span> and ███.'
+		),
 	)
 	chapter_path = tmp_path / chapter_markdown_filename(chapter.title)
 	volume_path = tmp_path / "volume-10.md"
@@ -82,12 +89,17 @@ def test_all_renderers_normalize_accessible_unicode(tmp_path):
 
 	assert chapter_path.name == "TWI-10.66-O.md"
 	assert "The Inn and [Link](https://example.com/𝔗𝔥𝔢)" in chapter_path.read_text(encoding="utf-8")
+	assert "[Redacted in original: a secret] and [redacted]." in chapter_path.read_text(
+		encoding="utf-8"
+	)
 	assert "## [10.66 O]" in volume_path.read_text(encoding="utf-8")
 
 	book = epub.read_epub(str(epub_path))
 	item = next(item for item in book.get_items() if item.file_name == "001-10-66-o.xhtml")
 	html = item.get_content().decode("utf-8")
+	visible_text = BeautifulSoup(html, "lxml").get_text(" ", strip=True)
 	assert ">10.66 O</a></h1>" in html
 	assert "The Inn" in html
+	assert "[Redacted in original: a secret] and [redacted]." in visible_text
 	assert ">Link</a>" in html
 	assert 'href="https://example.com/𝔗𝔥𝔢"' in html

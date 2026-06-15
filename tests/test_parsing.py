@@ -147,6 +147,29 @@ def test_parse_chapter_normalizes_stylized_unicode_text_but_not_attributes():
 	assert "𝔗𝔥𝔢" in chapter.html
 
 
+def test_parse_chapter_marks_recoverable_and_literal_redactions():
+	chapter = parse_chapter(
+		_chapter_html(
+			"7.25",
+			"""
+			<p>The raider was <span style="opacity: 0">Lady Example</span>.</p>
+			<p><span class="spoiler">Another identity</span> was hidden.</p>
+			<p>There were ███ raiders and █████ names.</p>
+			<p><span style="color: #ff0000">Ordinary red text</span></p>
+			<pre>Keep ███ as written here.</pre>
+			""",
+		),
+		"https://wanderinginn.com/2020/05/27/7-25/",
+		options=SINGLE_CHAPTER_PARSE_OPTIONS,
+	)
+
+	assert "[Redacted in original: Lady Example]" in chapter.markdown
+	assert "[Redacted in original: Another identity]" in chapter.markdown
+	assert "There were [redacted] raiders and [redacted] names." in chapter.markdown
+	assert '<span style="color: #ff0000">Ordinary red text</span>' in chapter.markdown
+	assert "Keep ███ as written here." in chapter.markdown
+
+
 def test_parse_chapter_removes_volume_seven_podcast_notice():
 	chapter = parse_chapter(
 		_chapter_html(

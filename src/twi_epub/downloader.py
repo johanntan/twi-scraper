@@ -25,7 +25,7 @@ from .parsing import (
 	parse_toc,
 )
 
-CACHE_VERSION = 4
+CACHE_VERSION = 5
 
 
 def parse_volume_spec(spec: str) -> list[int]:
