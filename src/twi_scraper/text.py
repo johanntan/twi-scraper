@@ -1,3 +1,5 @@
+"""Normalize chapter text for readable and screen-reader-friendly output."""
+
 from __future__ import annotations
 
 import re

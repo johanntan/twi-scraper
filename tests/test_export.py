@@ -1,13 +1,13 @@
 from ebooklib import epub
 from bs4 import BeautifulSoup
 
-from twi_epub.export import (
+from twi_scraper.export import (
 	chapter_markdown_filename,
 	write_chapter_markdown,
 	write_epub,
 	write_markdown,
 )
-from twi_epub.models import Chapter, Volume
+from twi_scraper.models import Chapter, Volume
 
 
 def test_write_markdown_and_epub(tmp_path):

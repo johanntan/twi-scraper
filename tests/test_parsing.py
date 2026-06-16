@@ -1,7 +1,7 @@
 import pytest
 
-from twi_epub.errors import LockedChapterError
-from twi_epub.parsing import SINGLE_CHAPTER_PARSE_OPTIONS, parse_chapter, parse_toc
+from twi_scraper.errors import LockedChapterError
+from twi_scraper.parsing import SINGLE_CHAPTER_PARSE_OPTIONS, parse_chapter, parse_toc
 
 
 TOC_HTML = """

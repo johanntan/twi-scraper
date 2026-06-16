@@ -1,3 +1,5 @@
+"""Parse the Wandering Inn table of contents and chapter pages."""
+
 from __future__ import annotations
 
 import json

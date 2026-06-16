@@ -1,11 +1,11 @@
 import pytest
 
-from twi_epub.catalog import (
+from twi_scraper.catalog import (
 	VOLUME_URL_OVERRIDES,
 	apply_volume_download_exclusions,
 	apply_volume_overrides,
 )
-from twi_epub.downloader import (
+from twi_scraper.downloader import (
 	CACHE_VERSION,
 	_load_cached_chapter,
 	_write_cached_chapter,
@@ -14,8 +14,8 @@ from twi_epub.downloader import (
 	resolve_chapter_from_volumes,
 	resolve_chapter_selector,
 )
-from twi_epub.errors import ParseError
-from twi_epub.models import Chapter, ChapterLink, Volume
+from twi_scraper.errors import ParseError
+from twi_scraper.models import Chapter, ChapterLink, Volume
 
 
 def test_parse_volume_spec():
@@ -34,7 +34,7 @@ def test_cache_rejects_old_version(tmp_path):
 		markdown="Hello.",
 	)
 	_write_cached_chapter(tmp_path, 3, 1, chapter)
-	path = next((tmp_path / ".cache" / "volume-03").glob("*.json"))
+	path = next((tmp_path / "volume-03").glob("*.json"))
 	path.write_text(
 		path.read_text(encoding="utf-8").replace(
 			f'"cache_version": {CACHE_VERSION}', '"cache_version": 1'

@@ -1,3 +1,5 @@
+"""Targeted cleanup rules for known chapter-specific notices."""
+
 from __future__ import annotations
 
 import re

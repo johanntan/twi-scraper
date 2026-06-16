@@ -1,3 +1,5 @@
+"""Render downloaded chapters as Markdown and EPUB files."""
+
 from __future__ import annotations
 
 import re

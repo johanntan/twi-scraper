@@ -1,6 +1,6 @@
 version = 1
 revision = 3
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 
 [[package]]
 name = "anyio"
@@ -398,7 +398,7 @@ wheels = [
 ]
 
 [[package]]
-name = "twi-epub"
+name = "twi-scraper"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

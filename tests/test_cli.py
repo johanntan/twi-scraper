@@ -2,8 +2,8 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-from twi_epub import cli
-from twi_epub.models import ChapterLink, Volume
+from twi_scraper import cli
+from twi_scraper.models import ChapterLink, Volume
 
 
 class DummyClient:
@@ -16,18 +16,20 @@ class DummyClient:
 
 def test_root_command_accepts_positional_volume(monkeypatch, tmp_path):
 	calls = []
+	cache_dir = tmp_path / "cache"
 
 	def fake_load_selected_volumes(client, volume_numbers):
 		calls.append(("load", volume_numbers))
 		return [Volume(number=4, title="Volume 4")]
 
-	def fake_download_volume(client, volume, *, output_dir, formats, refresh):
-		calls.append(("download", volume.number, output_dir, formats, refresh))
+	def fake_download_volume(client, volume, *, output_dir, cache_dir, formats, refresh):
+		calls.append(("download", volume.number, output_dir, cache_dir, formats, refresh))
 		return [output_dir / "volume-04.md"]
 
 	monkeypatch.setattr(cli, "build_client", lambda **kwargs: DummyClient())
 	monkeypatch.setattr(cli, "load_selected_volumes", fake_load_selected_volumes)
 	monkeypatch.setattr(cli, "download_volume", fake_download_volume)
+	monkeypatch.setattr(cli, "default_cache_dir", lambda: cache_dir)
 
 	result = CliRunner().invoke(
 		cli.app,
@@ -36,33 +38,36 @@ def test_root_command_accepts_positional_volume(monkeypatch, tmp_path):
 
 	assert result.exit_code == 0, result.output
 	assert ("load", [4]) in calls
-	assert ("download", 4, Path(tmp_path), {"md"}, False) in calls
+	assert ("download", 4, Path(tmp_path), cache_dir, {"md"}, False) in calls
 	assert "Wrote" in result.output
 
 
-def test_download_alias_still_accepts_volumes_option(monkeypatch, tmp_path):
+def test_root_command_defaults_output_to_current_directory(monkeypatch, tmp_path):
 	calls = []
 
 	def fake_load_selected_volumes(client, volume_numbers):
-		calls.append(("load", volume_numbers))
 		return [Volume(number=4, title="Volume 4")]
 
-	def fake_download_volume(client, volume, *, output_dir, formats, refresh):
-		calls.append(("download", volume.number, output_dir, formats, refresh))
+	def fake_download_volume(client, volume, *, output_dir, cache_dir, formats, refresh):
+		calls.append((output_dir, cache_dir))
 		return [output_dir / "volume-04.md"]
 
 	monkeypatch.setattr(cli, "build_client", lambda **kwargs: DummyClient())
 	monkeypatch.setattr(cli, "load_selected_volumes", fake_load_selected_volumes)
 	monkeypatch.setattr(cli, "download_volume", fake_download_volume)
+	monkeypatch.setattr(cli, "default_cache_dir", lambda: tmp_path / "cache")
 
-	result = CliRunner().invoke(
-		cli.app,
-		["download", "--volumes", "4", "--formats", "md", "--output", str(tmp_path)],
-	)
+	with CliRunner().isolated_filesystem(temp_dir=tmp_path):
+		result = CliRunner().invoke(cli.app, ["4", "--formats", "md"])
 
 	assert result.exit_code == 0, result.output
-	assert ("load", [4]) in calls
-	assert ("download", 4, Path(tmp_path), {"md"}, False) in calls
+	assert calls == [(Path("."), tmp_path / "cache")]
+
+
+def test_removed_download_alias_is_rejected():
+	result = CliRunner().invoke(cli.app, ["download", "--volumes", "4"])
+
+	assert result.exit_code != 0
 
 
 def test_chapter_command_resolves_selector_and_forwards_browser_cookies(monkeypatch, tmp_path):

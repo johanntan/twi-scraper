@@ -1,3 +1,5 @@
+"""Resolve, download, cache, and export Wandering Inn chapters."""
+
 from __future__ import annotations
 
 import hashlib
@@ -125,6 +127,7 @@ def download_volume(
 	volume: Volume,
 	*,
 	output_dir: Path,
+	cache_dir: Path,
 	formats: set[str],
 	refresh: bool = False,
 ) -> list[Path]:
@@ -132,10 +135,10 @@ def download_volume(
 	manifest: list[dict[str, object]] = []
 
 	for index, link in enumerate(volume.chapters, start=1):
-		chapter = _load_cached_chapter(output_dir, volume.number, index, link.url)
+		chapter = _load_cached_chapter(cache_dir, volume.number, index, link.url)
 		if chapter is None or refresh:
 			chapter = fetch_chapter(client, link.url)
-			_write_cached_chapter(output_dir, volume.number, index, chapter)
+			_write_cached_chapter(cache_dir, volume.number, index, chapter)
 			status = "downloaded"
 		else:
 			status = "cached"
@@ -162,7 +165,7 @@ def download_volume(
 		write_epub(volume, chapters, path)
 		paths.append(path)
 
-	_manifest_path(output_dir, volume.number).write_text(
+	_manifest_path(cache_dir, volume.number).write_text(
 		manifest_dump(
 			{
 				"volume": volume.number,
@@ -235,8 +238,8 @@ def _normalize_chapter_selector(value: str) -> str:
 	return value
 
 
-def _load_cached_chapter(output_dir: Path, volume: int, index: int, url: str) -> Chapter | None:
-	path = _chapter_cache_path(output_dir, volume, index, url)
+def _load_cached_chapter(cache_dir: Path, volume: int, index: int, url: str) -> Chapter | None:
+	path = _chapter_cache_path(cache_dir, volume, index, url)
 	if not path.exists():
 		return None
 	data = json.loads(path.read_text(encoding="utf-8"))
@@ -251,8 +254,8 @@ def _load_cached_chapter(output_dir: Path, volume: int, index: int, url: str) ->
 	)
 
 
-def _write_cached_chapter(output_dir: Path, volume: int, index: int, chapter: Chapter) -> None:
-	path = _chapter_cache_path(output_dir, volume, index, chapter.url)
+def _write_cached_chapter(cache_dir: Path, volume: int, index: int, chapter: Chapter) -> None:
+	path = _chapter_cache_path(cache_dir, volume, index, chapter.url)
 	path.parent.mkdir(parents=True, exist_ok=True)
 	path.write_text(
 		manifest_dump(
@@ -270,13 +273,13 @@ def _write_cached_chapter(output_dir: Path, volume: int, index: int, chapter: Ch
 	)
 
 
-def _chapter_cache_path(output_dir: Path, volume: int, index: int, url: str) -> Path:
+def _chapter_cache_path(cache_dir: Path, volume: int, index: int, url: str) -> Path:
 	digest = hashlib.sha256(url.encode("utf-8")).hexdigest()[:12]
-	return output_dir / ".cache" / f"volume-{volume:02d}" / f"{index:03d}-{digest}.json"
+	return cache_dir / f"volume-{volume:02d}" / f"{index:03d}-{digest}.json"
 
 
-def _manifest_path(output_dir: Path, volume: int) -> Path:
-	path = output_dir / ".cache" / f"volume-{volume:02d}" / "manifest.json"
+def _manifest_path(cache_dir: Path, volume: int) -> Path:
+	path = cache_dir / f"volume-{volume:02d}" / "manifest.json"
 	path.parent.mkdir(parents=True, exist_ok=True)
 	return path
 

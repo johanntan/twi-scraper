@@ -1,4 +1,4 @@
-from twi_epub.text import normalize_accessible_html, normalize_accessible_markdown
+from twi_scraper.text import normalize_accessible_html, normalize_accessible_markdown
 
 
 def test_normalize_accessible_html_reveals_css_redactions_and_literal_blocks():

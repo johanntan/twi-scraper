@@ -14,4 +14,10 @@ wheels/
 
 # Local downloader output
 out/
+volume-*.epub
+volume-*.md
+TWI-*.md
+cookies*.json
+cookies*.txt
+*.cookies
 .DS_Store

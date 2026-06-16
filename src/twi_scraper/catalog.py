@@ -1,3 +1,5 @@
+"""Known catalog corrections and volume-specific exclusions."""
+
 from __future__ import annotations
 
 from .models import ChapterLink, Volume

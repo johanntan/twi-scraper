@@ -1,3 +1,5 @@
+"""Load authorized Wandering Inn cookies without persisting their values."""
+
 from __future__ import annotations
 
 import json
