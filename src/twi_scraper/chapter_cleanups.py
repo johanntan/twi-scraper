@@ -46,13 +46,102 @@ PARAGRAPH_REMOVALS: tuple[ParagraphRemovalRule, ...] = (
 			"not see hyperlinks, such as those on mobile devices or WordPress' Reader Mode.)"
 		),
 	),
+	ParagraphRemovalRule(
+		text=(
+			"(I will be taking part in an online panel on r/Fantasy on the 23rd of April! "
+			"Find out more here!)"
+		),
+	),
+	ParagraphRemovalRule(
+		text=(
+			"(MouthyMaven (Andrea Parsneau) is recording The Wandering Inn's Volume 2 "
+			"audiobook on her server! You can check her out, but be warned-it's live "
+			"recording, mistakes, swearing, and all! You can find her server here, as well "
+			"as times when she records!)"
+		),
+	),
+)
+
+_LEADING_NOTICE_KEYWORDS = (
+	"amazon",
+	"app",
+	"audible",
+	"audiobook",
+	"author is on",
+	"author is taking",
+	"banner",
+	"break",
+	"check it out",
+	"comic",
+	"discord",
+	"fan-game",
+	"fanart",
+	"graphic novel",
+	"last tide",
+	"official merchandise",
+	"official twitter",
+	"patreon",
+	"patreons",
+	"podcast",
+	"poll",
+	"preorder",
+	"public reader",
+	"release",
+	"royalroad",
+	"soundcloud",
+	"subreddit",
+	"sweepstakes",
+	"trailer",
+	"twitter",
+	"will be back",
+	"will resume updating",
 )
 
 
 def apply_manual_chapter_cleanups(article: Tag, *, title: str, url: str) -> None:
 	normalized_title = _normalize_text(title).lower()
+	_remove_leading_notice_paragraphs(article)
 	_remove_matching_paragraphs(article, normalized_title)
 	_unlink_solstice_next_chapter_links(article, normalized_title, url)
+
+
+def _remove_leading_notice_paragraphs(article: Tag) -> None:
+	for node in list(_leading_text_blocks(article)):
+		text = _normalize_text(node.get_text(" ", strip=True))
+		if not _is_leading_notice(text):
+			return
+		node.decompose()
+
+
+def _leading_text_blocks(article: Tag) -> list[Tag]:
+	root = _leading_block_root(article)
+	nodes: list[Tag] = []
+	for node in root.find_all(["p", "div", "section"], recursive=False):
+		if not isinstance(node, Tag):
+			continue
+		text = _normalize_text(node.get_text(" ", strip=True))
+		if not text:
+			continue
+		nodes.append(node)
+	return nodes
+
+
+def _leading_block_root(article: Tag) -> Tag:
+	children = [child for child in article.children if isinstance(child, Tag)]
+	if len(children) == 1 and children[0].name in {"div", "section"}:
+		return children[0]
+	return article
+
+
+def _is_leading_notice(text: str) -> bool:
+	normalized = text.lower()
+	if normalized.startswith("android:") and "play.google.com/store/apps" in normalized:
+		return True
+	if normalized.startswith("ios:") and "apps.apple.com" in normalized:
+		return True
+	if not (normalized.startswith("(") and normalized.endswith(")")):
+		return False
+	return any(keyword in normalized for keyword in _LEADING_NOTICE_KEYWORDS)
 
 
 def _remove_matching_paragraphs(article: Tag, normalized_title: str) -> None:
@@ -111,4 +200,5 @@ def _normalize_text(value: str) -> str:
 		.replace("Phillipines", "Philippines")
 		.strip()
 	)
+	text = re.sub(r"\b(\d+)\s+(st|nd|rd|th)\b", r"\1\2", text, flags=re.IGNORECASE)
 	return re.sub(r"\s+([!?,.;:)])", r"\1", text)

@@ -162,6 +162,67 @@ def test_parse_chapter_strips_trailing_author_note():
 	assert "More note text." not in chapter.markdown
 
 
+def test_parse_chapter_strips_trailing_plural_author_notes():
+	chapter = parse_chapter(
+		_chapter_html(
+			"Interlude - Strategists at Sea (Pt. 2)",
+			"""
+			<p>Actual chapter text.</p>
+			<p><strong>Author's Notes:</strong> This should be stripped.</p>
+			<p>Gallery credits should be stripped too.</p>
+			""",
+		),
+		"https://wanderinginn.com/2020/04/22/interlude-strategists-at-sea-pt-2/",
+	)
+
+	assert "Actual chapter text." in chapter.markdown
+	assert "Author's Notes" not in chapter.markdown
+	assert "Gallery credits" not in chapter.markdown
+
+
+def test_parse_chapter_strips_after_chapter_thoughts_tail():
+	chapter = parse_chapter(
+		_chapter_html(
+			"Interlude - A Meeting of [Druids]",
+			"""
+			<p>Actual chapter text.</p>
+			<p><strong>After Chapter Thoughts:</strong> These should be stripped.</p>
+			<p>Thanks to these wonderful artists.</p>
+			<p><a href="https://ko-fi.com/example">https://ko-fi.com/example</a></p>
+			<div class="tiled-gallery">
+				<img src="https://example.com/fanart.png" alt="Fanart" />
+			</div>
+			""",
+		),
+		"https://wanderinginn.com/2020/07/01/interlude-a-meeting-of-druids/",
+	)
+
+	assert "Actual chapter text." in chapter.markdown
+	assert "After Chapter Thoughts" not in chapter.markdown
+	assert "wonderful artists" not in chapter.markdown
+	assert "ko-fi.com" not in chapter.markdown
+	assert "Fanart" not in chapter.markdown
+
+
+def test_single_chapter_parse_keeps_after_chapter_thoughts_tail():
+	chapter = parse_chapter(
+		_chapter_html(
+			"Interlude - A Meeting of [Druids]",
+			"""
+			<p>Actual chapter text.</p>
+			<p><strong>After Chapter Thoughts:</strong> These should remain.</p>
+			<p>Thanks to these wonderful artists.</p>
+			""",
+		),
+		"https://wanderinginn.com/2020/07/01/interlude-a-meeting-of-druids/",
+		options=SINGLE_CHAPTER_PARSE_OPTIONS,
+	)
+
+	assert "Actual chapter text." in chapter.markdown
+	assert "After Chapter Thoughts" in chapter.markdown
+	assert "wonderful artists" in chapter.markdown
+
+
 def test_parse_chapter_normalizes_stylized_unicode_text_but_not_attributes():
 	chapter = parse_chapter(
 		_chapter_html(
@@ -275,6 +336,139 @@ def test_parse_chapter_removes_solstice_reader_instruction():
 
 	assert "Real chapter text." in chapter.markdown
 	assert "Before going to next chapter" not in chapter.markdown
+
+
+def test_parse_chapter_removes_volume_seven_rfantasy_notice():
+	chapter = parse_chapter(
+		_chapter_html(
+			"Interlude - Strategists at Sea (Pt. 2)",
+			"""
+			<p><strong>(I will be taking part in an online panel on r/Fantasy on the 23rd
+			of April! <a href="https://example.com">Find out more here!</a>)</strong></p>
+			<p>Real chapter text.</p>
+			""",
+		),
+		"https://wanderinginn.com/2020/04/22/interlude-strategists-at-sea-pt-2/",
+	)
+
+	assert "Real chapter text." in chapter.markdown
+	assert "r/Fantasy" not in chapter.markdown
+
+
+def test_parse_chapter_removes_volume_seven_rfantasy_notice_with_superscript_ordinal():
+	chapter = parse_chapter(
+		_chapter_html(
+			"Interlude - Strategists at Sea (Pt. 1)",
+			"""
+			<p><strong>(I will be taking part in an online panel on r/Fantasy on the
+			23<sup>rd</sup> of April! <a href="https://example.com">Find out more here!</a>)</strong></p>
+			<p>Real chapter text.</p>
+			""",
+		),
+		"https://wanderinginn.com/2020/04/19/interlude-strategists-at-sea-pt-1/",
+	)
+
+	assert "Real chapter text." in chapter.markdown
+	assert "r/Fantasy" not in chapter.markdown
+
+
+def test_parse_chapter_removes_volume_seven_mouthymaven_notice():
+	chapter = parse_chapter(
+		_chapter_html(
+			"7.17 S",
+			"""
+			<p><strong>(MouthyMaven (Andrea Parsneau) is recording The Wandering Inn’s
+			Volume 2 audiobook on her server! You can check her out, but be warned–it’s
+			live recording, mistakes, swearing, and all!
+			<a href="https://example.com">You can find her server here, as well as times
+			when she records!</a>)</strong></p>
+			<p>Real chapter text.</p>
+			""",
+		),
+		"https://wanderinginn.com/2020/04/12/7-17-s/",
+	)
+
+	assert "Real chapter text." in chapter.markdown
+	assert "MouthyMaven" not in chapter.markdown
+
+
+def test_parse_chapter_removes_leading_promotional_notice():
+	chapter = parse_chapter(
+		_chapter_html(
+			"Interlude - A Meeting of [Druids]",
+			"""
+			<p><strong>(A preview of Volume 2 is now up on Soundcloud!
+			<a href="https://example.com">Check it out here!</a>
+			The audiobook will be release July 14th!)</strong></p>
+			<p>Real chapter text.</p>
+			""",
+		),
+		"https://wanderinginn.com/2020/07/01/interlude-a-meeting-of-druids/",
+	)
+
+	assert "Real chapter text." in chapter.markdown
+	assert "Soundcloud" not in chapter.markdown
+	assert "audiobook will be release" not in chapter.markdown
+
+
+def test_parse_chapter_removes_multiple_leading_notice_paragraphs():
+	chapter = parse_chapter(
+		_chapter_html(
+			"7.37",
+			"""
+			<p>(The Last Tide is available for preorder! It comes out in August!
+			Check it out <a href="https://example.com">here</a>!)</p>
+			<p>(One of our subreddit mods, Akrasia, is putting on a poll for TWI-readers,
+			like last year! Consider filling it out!)</p>
+			<p>Real chapter text.</p>
+			""",
+		),
+		"https://wanderinginn.com/2020/07/29/7-37/",
+	)
+
+	assert "Real chapter text." in chapter.markdown
+	assert "Last Tide" not in chapter.markdown
+	assert "Akrasia" not in chapter.markdown
+	assert "subreddit mods" not in chapter.markdown
+
+
+def test_parse_chapter_removes_leading_app_store_links():
+	chapter = parse_chapter(
+		_chapter_html(
+			"7.46 K",
+			"""
+			<p>(The Living Library is an app with a number of interactive stories!
+			A friend of mine, Quill, has finished The Sorcerer's Tower—give it a read
+			if you're looking for more stories!)</p>
+			<p>Android: https://play.google.com/store/apps/details?id=com.humbletoymaker</p>
+			<p>iOS: https://apps.apple.com/us/app/the-living-library/id1522167504</p>
+			<p>Real chapter text.</p>
+			""",
+		),
+		"https://wanderinginn.com/2020/09/13/7-46-k/",
+	)
+
+	assert "Real chapter text." in chapter.markdown
+	assert "Living Library" not in chapter.markdown
+	assert "play.google.com" not in chapter.markdown
+	assert "apps.apple.com" not in chapter.markdown
+
+
+def test_parse_chapter_preserves_story_parenthetical_opening():
+	chapter = parse_chapter(
+		_chapter_html(
+			"Interlude - The Antinium Wars (Pt.1)",
+			"""
+			<p>(This book was found by Ryoka Griffon on sale in Celum shortly after she
+			arrived in this world.)</p>
+			<p>More story text.</p>
+			""",
+		),
+		"https://wanderinginn.com/2017/06/25/s02-the-antinium-wars-pt-1/",
+	)
+
+	assert "This book was found by Ryoka Griffon" in chapter.markdown
+	assert "More story text." in chapter.markdown
 
 
 def test_parse_chapter_unlinks_final_solstice_chapter_link_only():
