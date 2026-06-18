@@ -27,7 +27,7 @@ from .parsing import (
 	parse_toc,
 )
 
-CACHE_VERSION = 5
+CACHE_VERSION = 6
 
 
 def parse_volume_spec(spec: str) -> list[int]:
@@ -155,7 +155,7 @@ def download_volume(
 		)
 
 	paths: list[Path] = []
-	stem = f"volume-{volume.number:02d}"
+	stem = f"twi-volume-{volume.number:02d}"
 	if "md" in formats:
 		path = output_dir / f"{stem}.md"
 		write_markdown(volume, chapters, path)

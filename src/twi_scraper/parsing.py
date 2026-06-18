@@ -233,11 +233,18 @@ def _strip_author_notes(article: Tag) -> None:
 
 def _first_author_note(article: Tag) -> Tag | None:
 	pattern = re.compile(r"^\s*Author[’']s\s+Note\b", re.IGNORECASE)
+	seen_readable_content = False
 	for node in article.find_all(["p", "div", "section", "h2", "h3", "h4"]):
 		if not isinstance(node, Tag):
 			continue
-		if pattern.search(_clean_text(node.get_text(" ", strip=True))):
-			return node
+		text = _clean_text(node.get_text(" ", strip=True))
+		if not text:
+			continue
+		if pattern.search(text):
+			if seen_readable_content:
+				return node
+			continue
+		seen_readable_content = True
 	return None
 
 

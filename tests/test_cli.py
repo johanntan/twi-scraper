@@ -24,7 +24,7 @@ def test_root_command_accepts_positional_volume(monkeypatch, tmp_path):
 
 	def fake_download_volume(client, volume, *, output_dir, cache_dir, formats, refresh):
 		calls.append(("download", volume.number, output_dir, cache_dir, formats, refresh))
-		return [output_dir / "volume-04.md"]
+		return [output_dir / "twi-volume-04.md"]
 
 	monkeypatch.setattr(cli, "build_client", lambda **kwargs: DummyClient())
 	monkeypatch.setattr(cli, "load_selected_volumes", fake_load_selected_volumes)
@@ -50,7 +50,7 @@ def test_root_command_defaults_output_to_current_directory(monkeypatch, tmp_path
 
 	def fake_download_volume(client, volume, *, output_dir, cache_dir, formats, refresh):
 		calls.append((output_dir, cache_dir))
-		return [output_dir / "volume-04.md"]
+		return [output_dir / "twi-volume-04.md"]
 
 	monkeypatch.setattr(cli, "build_client", lambda **kwargs: DummyClient())
 	monkeypatch.setattr(cli, "load_selected_volumes", fake_load_selected_volumes)

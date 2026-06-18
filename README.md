@@ -17,7 +17,7 @@ uv tool install git+https://github.com/johanntan/twi-scraper.git
 Update or remove it later with:
 
 ```bash
-uv tool install update twi-scraper
+uv tool install --force git+https://github.com/johanntan/twi-scraper.git
 uv tool uninstall twi-scraper
 ```
 
@@ -45,7 +45,7 @@ twi-scraper 10 --formats epub
 twi-scraper 10 --formats md --output ~/Books/WanderingInn
 ```
 
-Volume output is written as `volume-NN.epub` and `volume-NN.md` in the current directory by default. Use `--output` when you want generated files somewhere else.
+Volume output is written as `twi-volume-NN.epub` and `twi-volume-NN.md` in the current directory by default. Use `--output` when you want generated files somewhere else.
 
 Downloaded chapter data and manifests are cached outside the output directory:
 

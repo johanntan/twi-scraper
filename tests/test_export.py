@@ -22,8 +22,8 @@ def test_write_markdown_and_epub(tmp_path):
 		)
 	]
 
-	md_path = tmp_path / "volume-03.md"
-	epub_path = tmp_path / "volume-03.epub"
+	md_path = tmp_path / "twi-volume-03.md"
+	epub_path = tmp_path / "twi-volume-03.epub"
 
 	write_markdown(volume, chapters, md_path)
 	write_epub(volume, chapters, epub_path)
@@ -80,8 +80,8 @@ def test_all_renderers_normalize_accessible_unicode(tmp_path):
 		),
 	)
 	chapter_path = tmp_path / chapter_markdown_filename(chapter.title)
-	volume_path = tmp_path / "volume-10.md"
-	epub_path = tmp_path / "volume-10.epub"
+	volume_path = tmp_path / "twi-volume-10.md"
+	epub_path = tmp_path / "twi-volume-10.epub"
 
 	write_chapter_markdown(chapter, chapter_path)
 	write_markdown(volume, [chapter], volume_path)

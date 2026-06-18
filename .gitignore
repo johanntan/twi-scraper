@@ -14,8 +14,8 @@ wheels/
 
 # Local downloader output
 out/
-volume-*.epub
-volume-*.md
+twi-volume-*.epub
+twi-volume-*.md
 TWI-*.md
 cookies*.json
 cookies*.txt

@@ -128,6 +128,40 @@ def test_single_chapter_parse_keeps_author_notes_and_manual_cleanup_text():
 	assert "Previous Chapter" not in chapter.markdown
 
 
+def test_parse_chapter_keeps_leading_author_note():
+	chapter = parse_chapter(
+		_chapter_html(
+			"The Depthless Doctor",
+			"""
+			<p><strong>Author's Note:</strong> This is setup for the story.</p>
+			<p>Actual chapter text.</p>
+			""",
+		),
+		"https://wanderinginn.com/2018/07/09/the-depthless-doctor/",
+	)
+
+	assert "Author's Note" in chapter.markdown
+	assert "Actual chapter text." in chapter.markdown
+
+
+def test_parse_chapter_strips_trailing_author_note():
+	chapter = parse_chapter(
+		_chapter_html(
+			"9.33",
+			"""
+			<p>Actual chapter text.</p>
+			<p><strong>Author's Note:</strong> This should be stripped.</p>
+			<p>More note text.</p>
+			""",
+		),
+		"https://wanderinginn.com/2023/01/22/9-33/",
+	)
+
+	assert "Actual chapter text." in chapter.markdown
+	assert "Author's Note" not in chapter.markdown
+	assert "More note text." not in chapter.markdown
+
+
 def test_parse_chapter_normalizes_stylized_unicode_text_but_not_attributes():
 	chapter = parse_chapter(
 		_chapter_html(
