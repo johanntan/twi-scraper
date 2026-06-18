@@ -1,6 +1,6 @@
 [project]
 name = "twi-scraper"
-version = "0.1.0"
+version = "0.1.1"
 description = "Build personal Markdown and EPUB archives from The Wandering Inn"
 readme = "README.md"
 requires-python = ">=3.11"
