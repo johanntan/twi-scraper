@@ -125,6 +125,14 @@ uv run pytest
 
 ## Changes
 
+### 0.1.6
+
+Public GitHub release readiness: synchronized package metadata and documented the current release.
+
+### 0.1.5
+
+Renamed the project to `twi-scraper`, added GitHub install instructions, and expanded volume/chapter cleanup.
+
 ### 0.1.0
 
 Initial release.
