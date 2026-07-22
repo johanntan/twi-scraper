@@ -93,6 +93,27 @@ def test_parse_chapter_extracts_article_and_metadata():
 	assert "script" not in chapter.html
 
 
+def test_parse_chapter_uses_html_when_markdown_emphasis_boundaries_are_unsafe():
+	chapter = parse_chapter(
+		_chapter_html(
+			"10.71 (Pt. 2)",
+			"""
+			<p><em>Keep the Rubirel Guard safe—</em>the armored Drakes hesitated,
+			but everyone shouted at them to <em>run.</em></p>
+			<p>This place is loaded<em>. </em>Wait, even <em>I’d</em> wear one.</p>
+			<p>She thought <i>what—</i>then stopped.</p>
+			""",
+		),
+		"https://wanderinginn.com/2026/07/22/10-71-pt-2/",
+	)
+
+	assert "<em>Keep the Rubirel Guard safe—</em>the armored Drakes" in chapter.markdown
+	assert "loaded<em>.</em> Wait" in chapter.markdown
+	assert "<em>what—</em>then stopped" in chapter.markdown
+	assert "*run.*" in chapter.markdown
+	assert "*I’d*" in chapter.markdown
+
+
 def test_parse_chapter_detects_locked_page():
 	html = """
     <html><head><title>Locked</title></head>

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from dataclasses import dataclass
 from html import escape
 from urllib.parse import urljoin
@@ -18,6 +19,23 @@ from .text import normalize_accessible_text, normalize_tag_redactions, normalize
 
 BASE_URL = "https://wanderinginn.com/"
 TOC_URL = "https://wanderinginn.com/table-of-contents/"
+_BLOCK_TAGS = frozenset(
+	{
+		"article",
+		"blockquote",
+		"div",
+		"h1",
+		"h2",
+		"h3",
+		"h4",
+		"h5",
+		"h6",
+		"li",
+		"p",
+		"td",
+		"th",
+	}
+)
 
 
 @dataclass(frozen=True)
@@ -346,11 +364,34 @@ class _TwiMarkdownConverter(MarkdownConverter):
 	def convert_hr(self, el: Tag, text: str, parent_tags: set[str]) -> str:
 		return "\n\n***\n\n"
 
+	def convert_em(self, el: Tag, text: str, parent_tags: set[str]) -> str:
+		return self._convert_emphasis(el, text, parent_tags)
+
+	def convert_i(self, el: Tag, text: str, parent_tags: set[str]) -> str:
+		return self._convert_emphasis(el, text, parent_tags)
+
 	def convert_span(self, el: Tag, text: str, parent_tags: set[str]) -> str:
 		return self._inline_html_if_styled(el, text, {"style", "class", "title"})
 
 	def convert_font(self, el: Tag, text: str, parent_tags: set[str]) -> str:
 		return self._inline_html_if_styled(el, text, {"style", "class", "color", "face"})
+
+	def _convert_emphasis(self, el: Tag, text: str, parent_tags: set[str]) -> str:
+		if "_noformat" in parent_tags:
+			return text
+
+		prefix = " " if text.startswith(" ") else ""
+		suffix = " " if text.endswith(" ") else ""
+		content = text.strip()
+		visible_content = el.get_text().strip()
+		if not content or not visible_content:
+			return ""
+
+		before = " " if prefix else _adjacent_text_character(el, previous=True)
+		after = " " if suffix else _adjacent_text_character(el, previous=False)
+		if _supports_asterisk_emphasis(visible_content[0], visible_content[-1], before, after):
+			return f"{prefix}*{content}*{suffix}"
+		return f"{prefix}<em>{content}</em>{suffix}"
 
 	def _inline_html_if_styled(self, el: Tag, text: str, attrs: set[str]) -> str:
 		kept_attrs = []
@@ -365,3 +406,49 @@ class _TwiMarkdownConverter(MarkdownConverter):
 		if not kept_attrs:
 			return text
 		return f"<{el.name} {' '.join(sorted(kept_attrs))}>{text}</{el.name}>"
+
+
+def _supports_asterisk_emphasis(
+	first: str,
+	last: str,
+	before: str | None,
+	after: str | None,
+) -> bool:
+	# CommonMark only treats asterisks as emphasis delimiters when they are
+	# left-flanking at the start and right-flanking at the end.
+	opens = not first.isspace() and (
+		not _is_unicode_punctuation(first)
+		or _is_whitespace_or_boundary(before)
+		or _is_unicode_punctuation(before)
+	)
+	closes = not last.isspace() and (
+		not _is_unicode_punctuation(last)
+		or _is_whitespace_or_boundary(after)
+		or _is_unicode_punctuation(after)
+	)
+	return opens and closes
+
+
+def _adjacent_text_character(el: Tag, *, previous: bool) -> str | None:
+	sibling_attribute = "previous_sibling" if previous else "next_sibling"
+	current = el
+	while True:
+		sibling = getattr(current, sibling_attribute)
+		while sibling is not None:
+			value = sibling.get_text() if isinstance(sibling, Tag) else str(sibling)
+			if value:
+				return value[-1] if previous else value[0]
+			sibling = getattr(sibling, sibling_attribute)
+
+		parent = current.parent
+		if not isinstance(parent, Tag) or parent.name in _BLOCK_TAGS:
+			return None
+		current = parent
+
+
+def _is_whitespace_or_boundary(value: str | None) -> bool:
+	return value is None or value.isspace()
+
+
+def _is_unicode_punctuation(value: str | None) -> bool:
+	return value is not None and unicodedata.category(value).startswith("P")

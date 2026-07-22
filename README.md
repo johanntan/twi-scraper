@@ -125,6 +125,11 @@ uv run pytest
 
 ## Changes
 
+### 0.1.7
+
+Preserved emphasis around punctuation boundaries by falling back to CommonMark-compatible
+inline HTML when asterisk delimiters would be rendered literally.
+
 ### 0.1.6
 
 Public GitHub release readiness: synchronized package metadata and documented the current release.
