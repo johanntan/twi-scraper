@@ -43,6 +43,23 @@ def test_client_waits_between_requests() -> None:
 	assert clock.sleeps == [1.0]
 
 
+def test_client_paces_password_submission_without_retry() -> None:
+	clock = FakeClock()
+	attempts = []
+
+	def handler(request: httpx.Request) -> httpx.Response:
+		attempts.append(request.method)
+		return httpx.Response(503 if request.method == "POST" else 200, request=request)
+
+	with _client(handler, clock) as client:
+		client.get("https://wanderinginn.com/chapter/")
+		response = client.post("https://wanderinginn.com/wp-login.php", data={"post_password": "x"})
+
+	assert response.status_code == 503
+	assert attempts == ["GET", "POST"]
+	assert clock.sleeps == [1.0]
+
+
 def test_client_retries_retry_after_response() -> None:
 	clock = FakeClock()
 	statuses = iter((429, 200))
@@ -82,8 +99,10 @@ def test_client_retries_transport_errors_then_raises() -> None:
 	def handler(request: httpx.Request) -> httpx.Response:
 		raise httpx.ConnectError("network unavailable", request=request)
 
-	with _client(handler, clock, request_interval=0, max_attempts=2) as client:
-		with pytest.raises(httpx.ConnectError):
-			client.get("https://wanderinginn.com/chapter/")
+	with (
+		_client(handler, clock, request_interval=0, max_attempts=2) as client,
+		pytest.raises(httpx.ConnectError),
+	):
+		client.get("https://wanderinginn.com/chapter/")
 
 	assert clock.sleeps == [1.0]

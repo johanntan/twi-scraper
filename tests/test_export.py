@@ -1,5 +1,5 @@
-from ebooklib import epub
 from bs4 import BeautifulSoup
+from ebooklib import epub
 
 from twi_scraper.export import (
 	chapter_markdown_filename,

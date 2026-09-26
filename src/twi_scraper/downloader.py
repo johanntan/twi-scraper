@@ -6,12 +6,14 @@ import hashlib
 import json
 import re
 import unicodedata
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 import httpx
 
+from .auth import submit_chapter_password
 from .catalog import apply_volume_download_exclusions, apply_volume_overrides
 from .errors import LockedChapterError, ParseError
 from .export import chapter_markdown_filename, write_chapter_markdown, write_epub, write_markdown
@@ -49,17 +51,6 @@ def parse_volume_spec(spec: str) -> list[int]:
 	if not values:
 		raise ValueError("At least one volume is required.")
 	return sorted(values)
-
-
-def parse_format_spec(spec: str) -> set[str]:
-	values = {part.strip().lower() for part in spec.split(",") if part.strip()}
-	invalid = values - {"md", "markdown", "epub"}
-	if invalid:
-		raise ValueError(f"Unsupported format(s): {', '.join(sorted(invalid))}")
-	if "markdown" in values:
-		values.add("md")
-		values.remove("markdown")
-	return values or {"md", "epub"}
 
 
 def load_selected_volumes(client: httpx.Client, volume_numbers: list[int]) -> list[Volume]:
@@ -115,8 +106,11 @@ def download_single_chapter(
 	link: ChapterLink,
 	*,
 	output_dir: Path,
+	password_provider: Callable[[str], str] | None = None,
 ) -> Path:
-	chapter = fetch_chapter(client, link.url, options=SINGLE_CHAPTER_PARSE_OPTIONS)
+	chapter = fetch_chapter(
+		client, link.url, options=SINGLE_CHAPTER_PARSE_OPTIONS, password_provider=password_provider
+	)
 	path = output_dir / chapter_markdown_filename(chapter.title)
 	write_chapter_markdown(chapter, path)
 	return path
@@ -130,6 +124,7 @@ def download_volume(
 	cache_dir: Path,
 	formats: set[str],
 	refresh: bool = False,
+	password_provider: Callable[[str], str] | None = None,
 ) -> list[Path]:
 	chapters: list[Chapter] = []
 	manifest: list[dict[str, object]] = []
@@ -137,7 +132,7 @@ def download_volume(
 	for index, link in enumerate(volume.chapters, start=1):
 		chapter = _load_cached_chapter(cache_dir, volume.number, index, link.url)
 		if chapter is None or refresh:
-			chapter = fetch_chapter(client, link.url)
+			chapter = fetch_chapter(client, link.url, password_provider=password_provider)
 			_write_cached_chapter(cache_dir, volume.number, index, chapter)
 			status = "downloaded"
 		else:
@@ -171,7 +166,7 @@ def download_volume(
 				"volume": volume.number,
 				"cache_version": CACHE_VERSION,
 				"title": volume.title,
-				"generated_at": datetime.now(timezone.utc).isoformat(),
+				"generated_at": datetime.now(UTC).isoformat(),
 				"formats": sorted(formats),
 				"chapters": manifest,
 			}
@@ -186,9 +181,19 @@ def fetch_chapter(
 	url: str,
 	*,
 	options: ChapterParseOptions = DEFAULT_CHAPTER_PARSE_OPTIONS,
+	password_provider: Callable[[str], str] | None = None,
 ) -> Chapter:
 	html = fetch_text(client, url)
-	return parse_chapter(html, url, options=options)
+	try:
+		return parse_chapter(html, url, options=options)
+	except LockedChapterError:
+		if password_provider is None:
+			raise
+		submit_chapter_password(client, url, html, lambda: password_provider(url))
+		try:
+			return parse_chapter(fetch_text(client, url), url, options=options)
+		except LockedChapterError as exc:
+			raise LockedChapterError(f"Password did not unlock the chapter: {url}") from exc
 
 
 def _validated_chapter_url(selector: str) -> str | None:
@@ -266,7 +271,7 @@ def _write_cached_chapter(cache_dir: Path, volume: int, index: int, chapter: Cha
 				"published_at": chapter.published_at,
 				"html": chapter.html,
 				"markdown": chapter.markdown,
-				"cached_at": datetime.now(timezone.utc).isoformat(),
+				"cached_at": datetime.now(UTC).isoformat(),
 			}
 		),
 		encoding="utf-8",
@@ -288,7 +293,7 @@ def auth_hint(error: Exception, browser: str | None) -> str:
 	if isinstance(error, LockedChapterError):
 		attempted = f" using {browser} cookies" if browser else ""
 		return (
-			f"{error}{attempted}. Try logging in with Firefox and running with --browser firefox, "
-			"or pass --cookies-file with exported authorized cookies."
+			f"{str(error).rstrip('.')}{attempted}. You can also use --browser or --cookies-file "
+			"with authorized cookies."
 		)
 	return str(error)

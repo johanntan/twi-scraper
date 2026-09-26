@@ -149,9 +149,12 @@ def parse_chapter(
 def is_locked_page(soup: BeautifulSoup) -> bool:
 	text = soup.get_text(" ", strip=True).lower()
 	title = _chapter_title(soup).lower()
+	if soup.select_one('form input[name="post_password"]'):
+		return True
 
 	markers = (
 		"this content is password protected",
+		"this content is password-protected",
 		"enter your password to view comments",
 		"patreon exclusive",
 		"log in with patreon",

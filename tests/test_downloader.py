@@ -9,7 +9,6 @@ from twi_scraper.downloader import (
 	CACHE_VERSION,
 	_load_cached_chapter,
 	_write_cached_chapter,
-	parse_format_spec,
 	parse_volume_spec,
 	resolve_chapter_from_volumes,
 	resolve_chapter_selector,
@@ -20,10 +19,6 @@ from twi_scraper.models import Chapter, ChapterLink, Volume
 
 def test_parse_volume_spec():
 	assert parse_volume_spec("1-3,5") == [1, 2, 3, 5]
-
-
-def test_parse_format_spec():
-	assert parse_format_spec("epub,markdown") == {"epub", "md"}
 
 
 def test_cache_rejects_old_version(tmp_path):

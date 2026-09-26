@@ -2,7 +2,7 @@
 
 > This project was created with substantial AI assistance.
 
-`twi-scraper` downloads chapters from [The Wandering Inn](https://wanderinginn.com/) and builds personal Markdown or EPUB archives. It can download a complete volume, a range of volumes, one named chapter, or the latest chapter.
+`twi` downloads chapters from [The Wandering Inn](https://wanderinginn.com/) and builds personal Markdown or EPUB archives. It can download a complete volume, a range of volumes, one named chapter, or the latest chapter.
 
 This project is not affiliated with pirateaba or The Wandering Inn. The MIT license covers this program's source code only. The story, website, and downloaded chapter content remain the property of their respective copyright holders. Keep generated files for personal use and do not redistribute them.
 
@@ -28,21 +28,21 @@ Python 3.11 or newer is supported. uv can install a suitable Python interpreter 
 Download Volume 10 as both EPUB and Markdown:
 
 ```bash
-twi-scraper 10
+twi 10
 ```
 
 Volume ranges and comma-separated selections work too:
 
 ```bash
-twi-scraper 1-3
-twi-scraper 3,5,7-9
+twi 1-3
+twi 3,5,7-9
 ```
 
 Choose the output format or directory:
 
 ```bash
-twi-scraper 10 --formats epub
-twi-scraper 10 --formats md --output ~/Books/WanderingInn
+twi 10 --format epub
+twi 10 --format md --output ~/Books/WanderingInn
 ```
 
 Volume output is written as `twi-volume-NN.epub` and `twi-volume-NN.md` in the current directory by default. Use `--output` when you want generated files somewhere else.
@@ -59,25 +59,27 @@ Use `--refresh` to refetch chapters even when they are already cached.
 Download a chapter as Markdown using its table-of-contents title:
 
 ```bash
-twi-scraper chapter 1.05
+twi chapter 1.05
 ```
 
 The selector can also be `latest` or a direct chapter URL:
 
 ```bash
-twi-scraper chapter latest
-twi-scraper chapter https://wanderinginn.com/2020/01/26/7-02/
+twi chapter latest
+twi chapter https://wanderinginn.com/2020/01/26/7-02/
 ```
 
 Single-chapter files are named like `TWI-1.05.md`. They keep author notes and promotional text while still removing site navigation and normalizing the text.
 
 ## Authorized chapters
 
-`twi-scraper` does not bypass passwords, subscriptions, or login gates. It can reuse cookies from a browser where you already have access:
+When a chapter asks for a password, `twi` prompts for the password you obtained from the author. It submits the page's password form directly, without opening a browser. For scripts, set `TWI_PASSWORD` in the environment; it is used only if a chapter is locked. Do not put passwords directly in command arguments.
+
+Other login gates may require authorized cookies from a browser where you already have access:
 
 ```bash
-twi-scraper 1-2 --browser firefox
-twi-scraper chapter latest --browser firefox
+twi 1-2 --browser firefox
+twi chapter latest --browser firefox
 ```
 
 Supported browsers are Firefox, Chrome, Edge, and Safari. Browser cookie access depends on the operating system and browser security settings; Firefox is generally the most reliable option.
@@ -85,7 +87,7 @@ Supported browsers are Firefox, Chrome, Edge, and Safari. Browser cookie access 
 You can instead provide an authorized Netscape or JSON cookie export:
 
 ```bash
-twi-scraper 1-2 --cookies-file cookies.txt
+twi 1-2 --cookies-file cookies.txt
 ```
 
 ## Output cleanup
@@ -117,13 +119,18 @@ uv sync --dev
 Run the local command and checks:
 
 ```bash
-uv run twi-scraper 10
+uv run twi 10
 uv run ruff check .
 uv run ruff format --check .
 uv run pytest
 ```
 
 ## Changes
+
+### 0.2.0
+
+Added direct password entry for protected chapters, including the site's hybrid Patreon gate.
+Renamed the command to `twi`, simplified volume format selection, and switched to the uv build backend.
 
 ### 0.1.7
 

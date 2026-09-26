@@ -3,7 +3,6 @@ import pytest
 from twi_scraper.errors import LockedChapterError
 from twi_scraper.parsing import SINGLE_CHAPTER_PARSE_OPTIONS, parse_chapter, parse_toc
 
-
 TOC_HTML = """
 <div id="table-of-contents">
   <div id="vol-1" class="volume-wrapper">

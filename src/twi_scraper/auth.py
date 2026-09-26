@@ -3,13 +3,70 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from http.cookiejar import Cookie, CookieJar, MozillaCookieJar
 from pathlib import Path
+from urllib.parse import urljoin, urlparse
 
 import browser_cookie3
 import httpx
+from bs4 import BeautifulSoup, Tag
+
+from .errors import LockedChapterError
 
 SUPPORTED_BROWSERS = ("chrome", "firefox", "safari", "edge")
+ALLOWED_HOSTS = frozenset({"wanderinginn.com", "www.wanderinginn.com"})
+
+
+def submit_chapter_password(
+	client: httpx.Client, url: str, html: str, password_provider: Callable[[], str]
+) -> None:
+	"""Submit a protected chapter's own password form in the current session."""
+	soup = BeautifulSoup(html, "lxml")
+	form = next(
+		(
+			form
+			for form in soup.find_all("form")
+			if isinstance(form, Tag) and form.select_one('input[name="post_password"]')
+		),
+		None,
+	)
+	if form is not None:
+		if str(form.get("method", "post")).lower() != "post":
+			raise LockedChapterError("The chapter password form does not use POST.")
+		action = urljoin(url, str(form.get("action") or url))
+		fields = {
+			str(field.get("name")): str(field.get("value") or "")
+			for field in form.select('input[type="hidden"][name]')
+		}
+		password_field = "post_password"
+	elif _has_hybrid_password_gate(soup):
+		action = url
+		fields = {}
+		password_field = "hybrid_pass"
+	else:
+		raise LockedChapterError("The locked chapter has no supported password form.")
+
+	parsed = urlparse(action)
+	if parsed.scheme != "https" or parsed.hostname not in ALLOWED_HOSTS or parsed.username:
+		raise LockedChapterError("The chapter password form points to an unsafe address.")
+
+	password = password_provider()
+	if not password:
+		raise LockedChapterError(f"No chapter password was provided for {url}.")
+	fields[password_field] = password
+	response = client.post(action, data=fields, follow_redirects=False)
+	if response.is_error:
+		response.raise_for_status()
+
+
+def _has_hybrid_password_gate(soup: BeautifulSoup) -> bool:
+	if "patreon exclusive" not in soup.get_text(" ", strip=True).casefold():
+		return False
+	return any(
+		"hybrid-password-form" in script.get_text() and 'name="hybrid_pass"' in script.get_text()
+		for script in soup.find_all("script")
+	)
 
 
 def load_browser_cookies(browser: str) -> CookieJar:
@@ -29,7 +86,7 @@ def load_browser_cookies(browser: str) -> CookieJar:
 
 def load_cookie_file(path: Path) -> CookieJar:
 	text = path.read_text(encoding="utf-8").lstrip()
-	if text.startswith("[") or text.startswith("{"):
+	if text.startswith(("[", "{")):
 		return _load_json_cookie_file(text)
 
 	jar = MozillaCookieJar(str(path))
@@ -52,7 +109,7 @@ def _load_json_cookie_file(text: str) -> CookieJar:
 	if isinstance(raw, dict):
 		raw = raw.get("cookies", [])
 	if not isinstance(raw, list):
-		raise ValueError("JSON cookies must be a list or an object with a 'cookies' list.")
+		raise TypeError("JSON cookies must be a list or an object with a 'cookies' list.")
 
 	jar = CookieJar()
 	for item in raw:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
@@ -60,6 +60,10 @@ class RateLimitedClient(httpx.Client):
 
 		raise RuntimeError("Request retry loop ended unexpectedly.")
 
+	def post(self, url: httpx.URL | str, **kwargs: object) -> httpx.Response:
+		self._wait_for_request_slot()
+		return super().post(url, **kwargs)
+
 	def _wait_for_request_slot(self) -> None:
 		now = self._monotonic()
 		if self._last_request_started is not None:
@@ -108,8 +112,8 @@ def _retry_delay(response: httpx.Response, attempt: int) -> float:
 			try:
 				retry_at = parsedate_to_datetime(retry_after)
 				if retry_at.tzinfo is None:
-					retry_at = retry_at.replace(tzinfo=timezone.utc)
-				delay = (retry_at - datetime.now(timezone.utc)).total_seconds()
+					retry_at = retry_at.replace(tzinfo=UTC)
+				delay = (retry_at - datetime.now(UTC)).total_seconds()
 				return min(max(delay, 0.0), 60.0)
 			except (TypeError, ValueError, OverflowError):
 				pass

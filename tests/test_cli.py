@@ -22,7 +22,9 @@ def test_root_command_accepts_positional_volume(monkeypatch, tmp_path):
 		calls.append(("load", volume_numbers))
 		return [Volume(number=4, title="Volume 4")]
 
-	def fake_download_volume(client, volume, *, output_dir, cache_dir, formats, refresh):
+	def fake_download_volume(
+		client, volume, *, output_dir, cache_dir, formats, refresh, password_provider
+	):
 		calls.append(("download", volume.number, output_dir, cache_dir, formats, refresh))
 		return [output_dir / "twi-volume-04.md"]
 
@@ -33,7 +35,7 @@ def test_root_command_accepts_positional_volume(monkeypatch, tmp_path):
 
 	result = CliRunner().invoke(
 		cli.app,
-		["4", "--formats", "md", "--output", str(tmp_path)],
+		["4", "--format", "md", "--output", str(tmp_path)],
 	)
 
 	assert result.exit_code == 0, result.output
@@ -48,7 +50,9 @@ def test_root_command_defaults_output_to_current_directory(monkeypatch, tmp_path
 	def fake_load_selected_volumes(client, volume_numbers):
 		return [Volume(number=4, title="Volume 4")]
 
-	def fake_download_volume(client, volume, *, output_dir, cache_dir, formats, refresh):
+	def fake_download_volume(
+		client, volume, *, output_dir, cache_dir, formats, refresh, password_provider
+	):
 		calls.append((output_dir, cache_dir))
 		return [output_dir / "twi-volume-04.md"]
 
@@ -58,7 +62,7 @@ def test_root_command_defaults_output_to_current_directory(monkeypatch, tmp_path
 	monkeypatch.setattr(cli, "default_cache_dir", lambda: tmp_path / "cache")
 
 	with CliRunner().isolated_filesystem(temp_dir=tmp_path):
-		result = CliRunner().invoke(cli.app, ["4", "--formats", "md"])
+		result = CliRunner().invoke(cli.app, ["4", "--format", "md"])
 
 	assert result.exit_code == 0, result.output
 	assert calls == [(Path("."), tmp_path / "cache")]
@@ -85,7 +89,7 @@ def test_chapter_command_resolves_selector_and_forwards_browser_cookies(monkeypa
 		calls.append(("resolve", selector))
 		return link
 
-	def fake_download_single_chapter(client, selected, *, output_dir):
+	def fake_download_single_chapter(client, selected, *, output_dir, password_provider):
 		calls.append(("download", selected, output_dir))
 		return output_dir / "TWI-1.05.md"
 
@@ -103,3 +107,39 @@ def test_chapter_command_resolves_selector_and_forwards_browser_cookies(monkeypa
 	assert ("resolve", "1.05") in calls
 	assert ("download", link, Path(tmp_path)) in calls
 	assert "Wrote" in result.output
+
+
+def test_format_option_is_volume_only():
+	result = CliRunner().invoke(cli.app, ["chapter", "latest", "--format", "epub"])
+	assert result.exit_code != 0
+	assert "--format only applies to volume downloads" in result.output
+
+
+def test_password_comes_from_environment_when_needed(monkeypatch):
+	monkeypatch.setenv("TWI_PASSWORD", "private-value")
+	assert cli._password_for_chapter("https://wanderinginn.com/locked/") == "private-value"
+
+
+def test_noninteractive_password_failure_is_clear(monkeypatch):
+	monkeypatch.delenv("TWI_PASSWORD", raising=False)
+	monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: False)
+	try:
+		cli._password_for_chapter("https://wanderinginn.com/locked/")
+	except cli.LockedChapterError as exc:
+		assert "TWI_PASSWORD" in str(exc)
+	else:
+		raise AssertionError("Expected a locked chapter error")
+
+
+def test_interactive_password_prompt_is_hidden(monkeypatch):
+	monkeypatch.delenv("TWI_PASSWORD", raising=False)
+	monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: True)
+	calls = []
+
+	def fake_prompt(label, **kwargs):
+		calls.append((label, kwargs))
+		return "secret"
+
+	monkeypatch.setattr(cli.click, "prompt", fake_prompt)
+	assert cli._password_for_chapter("https://wanderinginn.com/locked/") == "secret"
+	assert calls == [("Chapter password", {"hide_input": True})]
