@@ -1,5 +1,8 @@
 # twi
 
+[![CI](https://github.com/johanntan/twi-scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/johanntan/twi-scraper/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/twi-scraper)](https://pypi.org/project/twi-scraper/)
+
 Download [The Wandering Inn](https://wanderinginn.com) as clean, screen-reader-friendly
 Markdown or EPUB files.
 

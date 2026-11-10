@@ -22,6 +22,10 @@ To audit the cleaner over many chapters, write a script that calls `Site().fetch
 
 ## Releasing
 
+CI (`.github/workflows/ci.yml`) runs the tests on Python 3.11–3.13 on Linux, macOS and Windows
+for every push and PR, builds the wheel, runs `twi --version` from it, and checks
+`CHANGELOG.md` has an entry for the current version.
+
 Published to PyPI as `twi-scraper` (command `twi`). `.github/workflows/publish.yml` runs on
 every push to `main`; if `v<version>` has no GitHub release yet, it publishes to PyPI and
 creates the release, with notes from that version's `CHANGELOG.md` section
