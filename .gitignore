@@ -5,3 +5,4 @@ __pycache__/
 *.part
 /out/
 .pytest_cache/
+dist/

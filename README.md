@@ -22,13 +22,15 @@ Markdown or EPUB files.
 
 ## Install
 
-Needs [uv](https://docs.astral.sh/uv/).
+The package is called `twi-scraper`; the command it installs is `twi`.
 
 ```sh
-uv tool install /Users/jt/dev/twi     # puts `twi` on your PATH
-# or, from this folder, without installing:
-uv run twi --help
+uv tool install twi-scraper       # with uv
+pipx install twi-scraper          # or with pipx
+uv tool upgrade twi-scraper       # later, to update
 ```
+
+From a checkout of this repository, `uv run twi --help` works without installing.
 
 ## Usage
 
@@ -100,3 +102,27 @@ colour. Each line also says what was removed from a chapter, so nothing disappea
 Unlocked chapter pages are cached in `~/.cache/twi`. The table of contents is refreshed every
 hour. Locked pages are never cached. Delete the folder, or pass `--refresh`, to download
 everything again.
+
+## Publishing a new version
+
+Releases go to PyPI automatically through GitHub Actions (`.github/workflows/publish.yml`),
+using PyPI trusted publishing, so no API token is stored anywhere.
+
+One-time setup on pypi.org (account → Publishing → "Add a new pending publisher"):
+
+| Field | Value |
+|---|---|
+| PyPI project name | `twi-scraper` |
+| Owner | `johanntan` |
+| Repository name | `twi-scraper` |
+| Workflow name | `publish.yml` |
+| Environment name | `pypi` |
+
+Then, for each release:
+
+1. Bump `version` in `pyproject.toml` and commit.
+2. Create a GitHub release whose tag is that version, e.g. `v0.1.0`:
+   `gh release create v0.1.0 --generate-notes`.
+
+The workflow checks that the tag matches the version, runs the tests, builds, and uploads.
+PyPI never accepts the same version twice, so a mistake means bumping to the next version.
