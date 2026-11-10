@@ -118,11 +118,16 @@ One-time setup on pypi.org (account → Publishing → "Add a new pending publis
 | Workflow name | `publish.yml` |
 | Environment name | `pypi` |
 
-Then, for each release:
+Every push to `main` runs the tests. A release happens when a push changes the version:
 
-1. Bump `version` in `pyproject.toml` and commit.
-2. Create a GitHub release whose tag is that version, e.g. `v0.1.0`:
-   `gh release create v0.1.0 --generate-notes`.
+1. While working, note changes under `## [Unreleased]` in `CHANGELOG.md`.
+2. To release, rename that heading to the new version and date, e.g.
+   `## [0.2.0] - 2026-12-01`, add a fresh empty `## [Unreleased]` above it, and bump
+   `version` in `pyproject.toml` to match. Use the third number for fixes (0.1.1), the
+   second for new features (0.2.0).
+3. Commit and push to `main`.
 
-The workflow checks that the tag matches the version, runs the tests, builds, and uploads.
+The workflow sees that `v0.2.0` has no release yet, runs the tests, builds, uploads to PyPI,
+then creates the `v0.2.0` tag and GitHub release, using that version's changelog section as
+the release notes. If the changelog has no section for the version, nothing is published.
 PyPI never accepts the same version twice, so a mistake means bumping to the next version.

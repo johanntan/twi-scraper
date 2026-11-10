@@ -20,6 +20,15 @@ To audit the cleaner over many chapters, write a script that calls `Site().fetch
 `clean()` and prints the log plus the first and last blocks of each chapter. Pages are cached in
 `~/.cache/twi`, so repeat runs are fast.
 
+## Releasing
+
+Published to PyPI as `twi-scraper` (command `twi`). `.github/workflows/publish.yml` runs on
+every push to `main`; if `v<version>` has no GitHub release yet, it publishes to PyPI and
+creates the release, with notes from that version's `CHANGELOG.md` section
+(`.github/changelog_notes.py`). So: record user-visible changes under `## [Unreleased]` as you
+make them; to release, rename it to `## [X.Y.Z] - date`, bump `pyproject.toml`, push. Don't
+rename `publish.yml` or the `pypi` environment: PyPI's trusted publisher is tied to them.
+
 ## Layout
 
 - `src/twi/site.py`: HTTP with a 1 s delay, JSON page cache, TOC and archive parsing, lock

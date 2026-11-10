@@ -1,44 +1,85 @@
-# Publishes to PyPI when a GitHub release is published.
-# Uses PyPI trusted publishing: no API token is stored anywhere. One-time setup
-# on pypi.org is described in README.md ("Publishing a new version").
+# Tests every push to main. When the version in pyproject.toml has no release yet,
+# it also publishes that version to PyPI and creates a GitHub release whose notes
+# are that version's section of CHANGELOG.md.
+#
+# So to release: bump `version` in pyproject.toml, add a matching `## [X.Y.Z]`
+# section to CHANGELOG.md, and push to main. Pushes that don't change the version
+# only run the tests.
+#
+# Uses PyPI trusted publishing (no API token). PyPI trusts this file by name
+# (publish.yml) and the `pypi` environment, so don't rename either.
 name: Publish to PyPI
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - name: Check the release tag matches the package version
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3  # this action has no moving major tag
+      - run: uv run --frozen pytest -q
+      - name: Is this version already released?
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           version=$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)
-          tag="${GITHUB_REF_NAME#v}"
-          if [ "$version" != "$tag" ]; then
-            echo "Release tag $GITHUB_REF_NAME does not match version $version in pyproject.toml"
-            exit 1
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "v$version is already released; nothing to publish."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "v$version is new; it will be published."
+            echo "release=true" >> "$GITHUB_OUTPUT"
           fi
-      - run: uv run --frozen pytest -q
-      - run: uv build
-      - uses: actions/upload-artifact@v4
+      - name: Get the release notes from CHANGELOG.md
+        if: steps.version.outputs.release == 'true'
+        run: python3 .github/changelog_notes.py "${{ steps.version.outputs.version }}" > release-notes.md
+      - if: steps.version.outputs.release == 'true'
+        run: uv build
+      - if: steps.version.outputs.release == 'true'
+        uses: actions/upload-artifact@v7
         with:
           name: dist
-          path: dist/
+          path: |
+            dist/
+            release-notes.md
 
   publish:
     needs: build
+    if: needs.build.outputs.release == 'true'
     runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/p/twi-scraper
     permissions:
-      id-token: write  # required for trusted publishing
+      id-token: write  # trusted publishing
+      contents: write  # create the release and tag
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist
-          path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true  # lets a failed run be re-run safely
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ needs.build.outputs.version }}
+        run: |
+          gh release create "$TAG" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --notes-file release-notes.md
