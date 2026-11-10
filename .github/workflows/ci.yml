@@ -1,0 +1,40 @@
+# Runs the tests on every push and pull request, on each supported Python version
+# and operating system, and checks that the package builds. Publishing is separate
+# (publish.yml).
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3  # this action has no moving major tag
+        with:
+          python-version: ${{ matrix.python }}
+      - run: uv run --frozen pytest -q
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
+      - run: uv build
+      - name: The built package installs and runs
+        run: uvx --isolated --from dist/*.whl twi --version
+      - name: CHANGELOG.md has an entry for the current version
+        run: python3 .github/changelog_notes.py "$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)" > /dev/null
