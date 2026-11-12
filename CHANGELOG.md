@@ -7,6 +7,14 @@ what changed for them, not how the code changed.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-12
+
+### Fixed
+
+- `twi chapter` (which keeps author's notes) now also removes opening announcements, such as
+  7.25's "(Volume 2 … is now available for preorder on Audible!)". An author's note at the top
+  of a chapter is still kept.
+
 ## [0.1.0] - 2026-11-10
 
 First release.

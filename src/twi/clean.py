@@ -362,34 +362,47 @@ def _note_end(blocks: list, i: int) -> int:
     return j
 
 
-def _leading_end(blocks: list) -> int:
-    """Index of the first story paragraph after any opening announcements."""
-    i = 0
+def _leading_notes(blocks: list) -> tuple[int, list[tuple[int, int]]]:
+    """Where the story starts after any opening announcements, plus the spans of
+    opening author's notes among them (kept when notes are kept)."""
+    i, notes = 0, []
     while i < len(blocks):
         b = blocks[i]
         if _is_blank(b) or isinstance(b, Rule):
             i += 1
         elif AUTHOR_NOTE.match(_text(b)):
-            i = _note_end(blocks, i)
+            end = _note_end(blocks, i)
+            notes.append((i, end))
+            i = end
         elif n := _wrapped_group(blocks, i):
             i += n
         elif _is_link_only(b):
             i += 1
         else:
             break
-    return i
+    return i, notes
 
 
-def _strip_leading(blocks: list, res: CleanResult) -> list:
-    i = _leading_end(blocks)
-    removed = [b for b in blocks[:i] if not _is_blank(b) and not isinstance(b, Rule)]
+def _leading_end(blocks: list) -> int:
+    """Index of the first story paragraph after any opening announcements."""
+    return _leading_notes(blocks)[0]
+
+
+def _strip_leading(blocks: list, res: CleanResult, keep_notes: bool = False) -> list:
+    """Remove opening announcements (promos, bracketed notices). In keep-notes
+    mode an opening "Author's Note" paragraph stays."""
+    end, notes = _leading_notes(blocks)
+    kept = [b for a, z in notes for b in blocks[a:z]] if keep_notes else []
+    kept_ids = {id(b) for b in kept}
+    removed = [b for b in blocks[:end]
+               if id(b) not in kept_ids and not _is_blank(b) and not isinstance(b, Rule)]
     if removed:
         text = " ".join(_text(b) for b in removed)
         res.log.append(f"removed opening announcement: {text[:160]}{'…' if len(text) > 160 else ''}")
         if CW_WORDS.search(text):
             res.content_warning = True
-        _find_alternates(removed, res)
-    return blocks[i:]
+    _find_alternates([b for b in blocks[:end] if not _is_blank(b)], res)
+    return kept + blocks[end:]
 
 
 def _find_alternates(removed: list, res: CleanResult) -> None:
@@ -584,11 +597,10 @@ def clean(html: str, *, keep_notes: bool = False, chapter_marks: bool = False) -
     """
     res = CleanResult(blocks=[])
     blocks = _remove_nav(html_to_blocks(html))
+    blocks = _strip_leading(blocks, res, keep_notes)
     if keep_notes:
-        _find_alternates(blocks[:_leading_end(blocks)], res)
         blocks = _mark_author_note(blocks, res)
     else:
-        blocks = _strip_leading(blocks, res)
         blocks = _strip_author_note(blocks, res)
         blocks = _strip_trailing(blocks, res)
         blocks = _strip_credits(blocks, res, None)

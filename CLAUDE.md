@@ -51,6 +51,8 @@ rename `publish.yml` or the `pypi` environment: PyPI's trusted publisher is tied
 
 - `chapter` defaults to Markdown and **keeps author's notes**, under an "Author's Note" heading.
   `volume` and `book` default to EPUB and **strip notes**. `--keep-notes` / `--no-notes` override.
+- Opening announcements (promos, bracketed notices) are removed in both modes. Keep-notes mode
+  only keeps an opening "Author's Note" paragraph.
 - Gallery images, fan-art credits and nav links are always removed.
 - Tales of Innworld are excluded from volumes, along with "Crossover Comic" and "Announcement"
   posts (`EXTRA_TITLES`). `--include-extras` keeps them.

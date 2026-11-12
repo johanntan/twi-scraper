@@ -92,7 +92,26 @@ def test_alternates_found_when_notes_kept():
     )
     res = clean(html, keep_notes=True)
     assert res.alternates["trigger-free"][1] == "traumaFree"
-    assert len(res.blocks) == 2
+    assert texts(res.blocks) == ["Story."]
+
+
+def test_opening_promo_removed_when_notes_kept():
+    # 7.25: a linked "(…preorder on Audible!)" line above the story.
+    html = article(
+        '<p><a href="https://geni.us/TheWanderingInn_Vol2">(Volume 2 of The Wandering Inn is now '
+        "available for preorder on Audible!)</a></p><p>&nbsp;</p><p>The Dragon slept.</p>" + NAV
+    )
+    for keep in (True, False):
+        assert texts(clean(html, keep_notes=keep).blocks) == ["The Dragon slept."]
+
+
+def test_opening_author_note_kept_only_when_notes_kept():
+    html = article(
+        "<p>(Audiobook out now!)</p><p>Author’s Note: short one today.</p><p>&nbsp;</p>"
+        + "<p>Story.</p>" * 4
+    )
+    assert texts(clean(html, keep_notes=True).blocks) == ["Author’s Note: short one today."] + ["Story."] * 4
+    assert texts(clean(html).blocks) == ["Story."] * 4
 
 
 def test_multi_paragraph_bracket_announcement_and_promo_links():
