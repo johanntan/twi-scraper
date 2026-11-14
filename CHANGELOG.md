@@ -7,6 +7,11 @@ what changed for them, not how the code changed.
 
 ## [Unreleased]
 
+### Fixed
+
+- Bold bracketed lines at the start of a chapter are no longer mistaken for announcements.
+  Interlude – The Call (the first chapter of Volume 2) kept losing its opening lines.
+
 ## [0.1.1] - 2026-11-12
 
 ### Fixed

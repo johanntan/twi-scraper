@@ -33,6 +33,9 @@ creates the release, with notes from that version's `CHANGELOG.md` section
 make them; to release, rename it to `## [X.Y.Z] - date`, bump `pyproject.toml`, push. Don't
 rename `publish.yml` or the `pypi` environment: PyPI's trusted publisher is tied to them.
 
+Never quote wording from chapters in commit messages or `CHANGELOG.md` entries (which become
+the public release notes). Name the chapter and describe the change instead.
+
 ## Layout
 
 - `src/twi/site.py`: HTTP with a 1 s delay, JSON page cache, TOC and archive parsing, lock

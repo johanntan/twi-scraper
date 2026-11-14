@@ -85,6 +85,27 @@ def test_9_68_style_announcements_removed_with_content_warning_and_alternate():
     assert res.alternates["trigger-free"] == ("https://wanderinginn.com/9-68-trigger-free/", "traumaFree")
 
 
+def test_bold_bracketed_story_lines_at_opening_kept():
+    # Interlude – The Call (Volume 2) opens with chat-system lines.
+    html = article(
+        "<p><strong>[User Rose has joined the conversation.]</strong></p>"
+        "<p><strong>[15 Users Connected]</strong></p><p>&nbsp;</p>"
+        "<p><strong>[Squirtle344] </strong> – Lol. Another one!</p>"
+    )
+    for keep in (False, True):
+        assert texts(clean(html, keep_notes=keep).blocks)[:2] == [
+            "[User Rose has joined the conversation.]", "[15 Users Connected]"]
+
+
+def test_monthly_break_notice_removed():
+    # 10.47 S: a short bold notice with no link.
+    html = article(
+        "<p><strong>&lt;Once again I am on my monthly break until the 1st of November!&gt;</strong></p>"
+        "<p>Story.</p>"
+    )
+    assert texts(clean(html).blocks) == ["Story."]
+
+
 def test_alternates_found_when_notes_kept():
     html = article(
         '<p><strong>[Trigger-free version <a href="https://wanderinginn.com/9-68-trigger-free/">here</a>. '

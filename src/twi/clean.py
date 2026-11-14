@@ -50,7 +50,8 @@ PASSWORD_HINT = re.compile(r"password\s+is\s+(?:also\s+)?[‘'\"“]?([^\s‘’
 PAIRS = {"(": ")", "[": "]", "{": "}", "<": ">"}
 ANNOUNCE_WORDS = re.compile(
     r"\b(patreon|patrons?|author|audiobook|ebook|pre-?order|release[sd]?|update|"
-    r"on break|public readers|chapter|warning|password|discord|webcomic)\b", re.I)
+    r"(?:on|monthly|month-long) break|public readers|chapter|warning|password|summary|"
+    r"discord|webcomic)\b", re.I)
 
 CONTENT_WARNING_TEXT = "Content warning: this chapter has a trigger warning for disturbing content."
 
@@ -332,13 +333,14 @@ def _wrapped_group(blocks: list, i: int) -> int:
             n = j - i + 1
             if t[0] != "(":
                 # "[Skill]" and "<Query>" lines are story text; require announcement traits.
+                # Bold alone isn't one: Interlude – The Call opens with bold chat-system
+                # lines ("[User Rose has joined the conversation.]").
                 group = blocks[i:j + 1]
                 joined = " ".join(_text(b) for b in group)
                 long = len(joined) >= 150
                 linked = any(_links(b.inlines) for b in group)
-                bold = all(_all_bold(b.inlines) for b in group)
                 worded = bool(ANNOUNCE_WORDS.search(joined))
-                if not (n > 1 or long or linked or bold or worded):
+                if not (n > 1 or long or linked or worded):
                     return 0
             return n
     return 0
