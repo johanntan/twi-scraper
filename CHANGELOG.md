@@ -7,6 +7,8 @@ what changed for them, not how the code changed.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-14
+
 ### Fixed
 
 - Bold bracketed lines at the start of a chapter are no longer mistaken for announcements.
